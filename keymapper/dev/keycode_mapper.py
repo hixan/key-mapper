@@ -87,14 +87,17 @@ class Memory:
         # 1. got key down event
 
         # 2. get existing combinations for that key
-        previous1 = combi_dependencies.get(key)
+        previous1 = combi_dependencies.get(input_key)
         previous2 = combi_dependencies.get(previous1)
         previous3 = combi_dependencies.get(previous2)
         # as long as it's != null. while loop and put on stack or something
 
+        # key not in combi_dependencies? skip check for combinations
+
         # 3. check if all of them are pressed down
         if (
-            # previous1[:2] in self._unreleased and  # (of course this one is)
+            # input_key is pressed, so no need to check if in _unreleased
+            previous1[:2] in self._unreleased and
             previous2[:2] in self._unreleased and
             previous3[:2] in self._unreleased
         ):

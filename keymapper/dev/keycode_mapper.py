@@ -75,6 +75,35 @@ class Memory:
         #  Because D-Pad-1 and D-Pad+1 cannot be at the same time, so it
         #  is safe to index by (type, code) only. And it also stores the
         #  source event
+        #  the more pressing question is how to get combinations. Order of
+        #  events? yes. that is more flexible, sounds natural (shift+a = A),
+        #  (a+shift = aaa).
+
+        # map from key to what it needs as parent. e.g.
+        # a expects shift as parent for A
+        combi_dependencies = {}
+
+        # how to check for combinations:
+        # 1. got key down event
+
+        # 2. get existing combinations for that key
+        previous1 = combi_dependencies.get(key)
+        previous2 = combi_dependencies.get(previous1)
+        previous3 = combi_dependencies.get(previous2)
+        # as long as it's != null. while loop and put on stack or something
+
+        # 3. check if all of them are pressed down
+        if (
+            # previous1[:2] in self._unreleased and  # (of course this one is)
+            previous2[:2] in self._unreleased and
+            previous3[:2] in self._unreleased
+        ):
+            combined_key = (previous1, previous2, previous3)
+            # do stuff
+            # get target keycode
+            target_code = key_to_code.get(combined_key)
+            # get macro
+            macro = macros.get(combined_key)
 
     def down(self, type, code, value):
         """Register a key down event."""

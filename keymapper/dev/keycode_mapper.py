@@ -39,12 +39,61 @@ from keymapper.dev.ev_abs_mapper import JOYSTICK
 # once, one for each direction. Only sequentially.
 active_macros = {}
 
-# mapping of input (type, code) to the output keycode that has not yet
-# been released. This is needed in order to release the correct event
-# mapped on a D-Pad. Both directions on each axis report the same type,
-# code and value (0) when releasing, but the correct release-event for
-# the mapped output needs to be triggered.
-unreleased = {}
+
+class Memory:
+    """Class to remember which keys are pressed down.
+
+    Makes it easier to keep integrity of `unreleased` and `pressed`.
+    """
+    def __init__(self, key_to_code):
+        self.key_to_code = key_to_code
+
+        # mapping of future up event (type, code) to (output code, input event)
+        # This is needed in order to release the correct event
+        # mapped on a D-Pad. Both directions on each axis report the same type,
+        # code and value (0) when releasing, but the correct release-event for
+        # the mapped output needs to be triggered.
+        # "I have got this release event, what was this for?"
+        # It remembers the input event so that it can be cleared from `pressed`
+        self._unreleased = {}
+
+        # pressed inputs (type, code, value). This needs the value, as opposed
+        # to `unreleased`, because the D-Pad event value -1 might be part of a
+        # combination, but D-Pad 1 not.
+        # "I have got this down event, lets remember that"
+        self._pressed = set()
+
+        # It could be done with only _unreleased, but I would have to search
+        # through it. I need to access stuff for both (type, key, value) and
+        # (type, key). So I'd rather have two structures to access stuff more
+        # efficiently.
+
+        # TODO what if
+        #  - i get (type, code, value) as input
+        #  - _unreleased.get((type, code))
+        #  - input event to check for combinations: [1]
+        #  Because D-Pad-1 and D-Pad+1 cannot be at the same time, so it
+        #  is safe to index by (type, code) only. And it also stores the
+        #  source event
+
+    def down(self, type, code, value):
+        """Register a key down event."""
+        self._unreleased[(type, code)] = (
+            (self.key_to_code((type, code, value))),
+            (type, code, value)
+        )
+        self._pressed.add((type, code, value))
+
+    def up(self, type, code):
+        """Handle a key up event."""
+        full_original_event = self._unreleased.get((type, code))[1]
+        self._pressed.remove(full_original_event)
+        del self._unreleased[(type, code)]
+
+    def is_pressed(self, type, code, value):
+        """Is this key currently pressed."""
+        # Value might be -1 for D-Pad left
+        return self._pressed.get((type, code, value)) is not None
 
 
 def should_map_event_as_btn(ev_type, code):
@@ -88,8 +137,10 @@ def handle_keycode(key_to_code, macros, event, uinput):
     ----------
     key_to_code : dict
         mapping of (type, code, value) to linux-keycode
+        or multiple of those like ((...), (...), ...) for combinatinos
     macros : dict
         mapping of (type, code, value) to _Macro objects
+        or multiple of those like ((...), (...), ...) for combinatinos
     event : evdev.InputEvent
     """
     if event.type == EV_KEY and event.value == 2:

@@ -52,36 +52,6 @@ active_macros = {}
 unreleased = {}
 
 
-"""# map from key to what it needs as parent. e.g.
-# a expects shift as parent for A
-combi_dependencies = {}
-
-# how to check for combinations:
-# 1. got key down event
-
-# 2. get existing combinations for that key
-previous1 = combi_dependencies.get(input_key)
-previous2 = combi_dependencies.get(previous1)
-previous3 = combi_dependencies.get(previous2)
-# as long as it's != null. while loop and put on stack or something
-
-# key not in combi_dependencies? skip check for combinations
-
-# 3. check if all of them are pressed down
-if (
-        # input_key is pressed, so no need to check if in _unreleased
-        self._unreleased.get(previous1[:2])[1] == previous1 and
-        self._unreleased.get(previous1[:2])[1] == previous2 and
-        self._unreleased.get(previous1[:2])[1] == previous3
-):
-    combined_key = (previous1, previous2, previous3)
-    # do stuff
-    # get target keycode
-    target_code = key_to_code.get(combined_key)
-    # get macro
-    macro = macros.get(combined_key)"""
-
-
 def should_map_event_as_btn(ev_type, code):
     """Does this event describe a button.
 
@@ -116,17 +86,64 @@ def is_key_up(event):
     return event.value == 0
 
 
-def handle_keycode(key_to_code, macros, event, uinput):
+COMBINATION_INCOMPLETE = 1  # not all keys of the combination are pressed
+NOT_COMBINED = 2  # this key is not part of a combination
+
+
+def resolve_dependencies(key, combi_dependencies):
+    """Get a list of pressed down keys that may make up a combined key press,
+    with key as the newest key, which will get the highest index.
+
+    The first element is the first key that has to be pressed down.
+    """
+    # TODO unittest
+    # TODO unittest a + b + c and b + a + c, all keys being down
+    dependencies = [key]
+
+    while True:
+        dependency = combi_dependencies.get(dependencies[-1])
+
+        if dependency is None:
+            # dependency list completely resolved
+            break
+
+        if isinstance(dependency, list):
+            # a + b + c; d + b + c; [a, d]
+            # take the first one of a or d that is unreleased
+            dependency = [d for d in dependency if unreleased.get(d[:2])][0]
+
+        # (output code, input event)
+        unreleased_entry = unreleased.get(dependency[:2])
+
+        if unreleased_entry is None:
+            return COMBINATION_INCOMPLETE
+
+        if unreleased_entry[1] != key:
+            # For example D-Pad left is the dependency, but D-Pad right is
+            # in unreleased. D-Pad right being unreleased means D-Pad left
+            # cannot be pressed down, they are mutually exclusive.
+            return COMBINATION_INCOMPLETE
+
+        dependencies.append(dependency)
+
+    return dependencies
+
+
+def handle_keycode(key_to_code, macros, combi_dependencies, event, uinput):
     """Write mapped keycodes, forward unmapped ones and manage macros.
 
     Parameters
     ----------
     key_to_code : dict
         mapping of (type, code, value) to linux-keycode
-        or multiple of those like ((...), (...), ...) for combinatinos
+        or multiple of those like ((...), (...), ...) for combinations
     macros : dict
         mapping of (type, code, value) to _Macro objects
-        or multiple of those like ((...), (...), ...) for combinatinos
+        or multiple of those like ((...), (...), ...) for combinations.
+        combinations need to be present in every possible valid ordering.
+        e.g. shift + alt + a and alt + shift + a
+    combi_dependencies : dict
+        See docstring of KeycodeInjector._map_dependencies
     event : evdev.InputEvent
     """
     if event.type == EV_KEY and event.value == 2:
@@ -140,6 +157,17 @@ def handle_keycode(key_to_code, macros, event, uinput):
     # they might skip the 1 when pressed fast enough.
     key = (event.type, event.code, sign(event.value))
     without_value = (event.type, event.code)
+
+    dependencies = resolve_dependencies(key, combi_dependencies)
+    # combination = [unreleased.keys()]
+
+    if dependencies == COMBINATION_INCOMPLETE:
+        # failed, maybe later
+        return
+
+    if isinstance(dependencies, list):
+        # the combination is complete. query for the combined key instead
+        key = tuple(dependencies)
 
     existing_macro = active_macros.get(without_value)
     if existing_macro is not None:

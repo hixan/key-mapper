@@ -39,93 +39,47 @@ from keymapper.dev.ev_abs_mapper import JOYSTICK
 # once, one for each direction. Only sequentially.
 active_macros = {}
 
+# mapping of future up event (type, code) to (output code, input event)
+# This is needed in order to release the correct event mapped on a
+# D-Pad. Each direction on one D-Pad axis reports the same type and
+# code, but different values. There cannot be both at the same time,
+# as pressing one side of a D-Pad forces the other side to go up.
+# "I have got this release event, what was this for?"
+# It maps to (output_code, input_event) with input_event being the
+# same as the key, but with the value of e.g. -1 or 1. The complete
+# 3-tuple output event is used for combined button presses. A
+# combination might be desired for D-Pad left, but not D-Pad right.
+unreleased = {}
 
-class Memory:
-    """Class to remember which keys are pressed down.
 
-    Makes it easier to keep integrity of `unreleased` and `pressed`.
-    """
-    def __init__(self, key_to_code):
-        self.key_to_code = key_to_code
+"""# map from key to what it needs as parent. e.g.
+# a expects shift as parent for A
+combi_dependencies = {}
 
-        # mapping of future up event (type, code) to (output code, input event)
-        # This is needed in order to release the correct event
-        # mapped on a D-Pad. Both directions on each axis report the same type,
-        # code and value (0) when releasing, but the correct release-event for
-        # the mapped output needs to be triggered.
-        # "I have got this release event, what was this for?"
-        # It remembers the input event so that it can be cleared from `pressed`
-        self._unreleased = {}
+# how to check for combinations:
+# 1. got key down event
 
-        # pressed inputs (type, code, value). This needs the value, as opposed
-        # to `unreleased`, because the D-Pad event value -1 might be part of a
-        # combination, but D-Pad 1 not.
-        # "I have got this down event, lets remember that"
-        self._pressed = set()
+# 2. get existing combinations for that key
+previous1 = combi_dependencies.get(input_key)
+previous2 = combi_dependencies.get(previous1)
+previous3 = combi_dependencies.get(previous2)
+# as long as it's != null. while loop and put on stack or something
 
-        # It could be done with only _unreleased, but I would have to search
-        # through it. I need to access stuff for both (type, key, value) and
-        # (type, key). So I'd rather have two structures to access stuff more
-        # efficiently.
+# key not in combi_dependencies? skip check for combinations
 
-        # TODO what if
-        #  - i get (type, code, value) as input
-        #  - _unreleased.get((type, code))
-        #  - input event to check for combinations: [1]
-        #  Because D-Pad-1 and D-Pad+1 cannot be at the same time, so it
-        #  is safe to index by (type, code) only. And it also stores the
-        #  source event
-        #  the more pressing question is how to get combinations. Order of
-        #  events? yes. that is more flexible, sounds natural (shift+a = A),
-        #  (a+shift = aaa).
-
-        # map from key to what it needs as parent. e.g.
-        # a expects shift as parent for A
-        combi_dependencies = {}
-
-        # how to check for combinations:
-        # 1. got key down event
-
-        # 2. get existing combinations for that key
-        previous1 = combi_dependencies.get(input_key)
-        previous2 = combi_dependencies.get(previous1)
-        previous3 = combi_dependencies.get(previous2)
-        # as long as it's != null. while loop and put on stack or something
-
-        # key not in combi_dependencies? skip check for combinations
-
-        # 3. check if all of them are pressed down
-        if (
-            # input_key is pressed, so no need to check if in _unreleased
-            previous1[:2] in self._unreleased and
-            previous2[:2] in self._unreleased and
-            previous3[:2] in self._unreleased
-        ):
-            combined_key = (previous1, previous2, previous3)
-            # do stuff
-            # get target keycode
-            target_code = key_to_code.get(combined_key)
-            # get macro
-            macro = macros.get(combined_key)
-
-    def down(self, type, code, value):
-        """Register a key down event."""
-        self._unreleased[(type, code)] = (
-            (self.key_to_code((type, code, value))),
-            (type, code, value)
-        )
-        self._pressed.add((type, code, value))
-
-    def up(self, type, code):
-        """Handle a key up event."""
-        full_original_event = self._unreleased.get((type, code))[1]
-        self._pressed.remove(full_original_event)
-        del self._unreleased[(type, code)]
-
-    def is_pressed(self, type, code, value):
-        """Is this key currently pressed."""
-        # Value might be -1 for D-Pad left
-        return self._pressed.get((type, code, value)) is not None
+# 3. check if all of them are pressed down
+if (
+        # input_key is pressed, so no need to check if in _unreleased
+        self._unreleased.get(previous1[:2])[1] == previous1 and
+        self._unreleased.get(previous1[:2])[1] == previous2 and
+        self._unreleased.get(previous1[:2])[1] == previous3
+):
+    combined_key = (previous1, previous2, previous3)
+    # do stuff
+    # get target keycode
+    target_code = key_to_code.get(combined_key)
+    # get macro
+    macro = macros.get(combined_key)"""
 
 
 def should_map_event_as_btn(ev_type, code):
@@ -185,9 +139,9 @@ def handle_keycode(key_to_code, macros, event, uinput):
     # trigger values that are between 1 and 255 is not possible, because
     # they might skip the 1 when pressed fast enough.
     key = (event.type, event.code, sign(event.value))
-    short = (event.type, event.code)
+    without_value = (event.type, event.code)
 
-    existing_macro = active_macros.get(short)
+    existing_macro = active_macros.get(without_value)
     if existing_macro is not None:
         if is_key_up(event) and not existing_macro.running:
             # key was released, but macro already stopped
@@ -208,30 +162,30 @@ def handle_keycode(key_to_code, macros, event, uinput):
 
     if key in macros:
         macro = macros[key]
-        active_macros[short] = macro
+        active_macros[without_value] = macro
         macro.press_key()
         logger.spam('got %s, maps to macro %s', key, macro.code)
         asyncio.ensure_future(macro.run())
         return
 
-    if is_key_down(event) and short in unreleased:
+    if is_key_down(event) and without_value in unreleased:
         # duplicate key-down. skip this event. Avoid writing millions of
         # key-down events when a continuous value is reported, for example
         # for gamepad triggers
         logger.spam('%s, duplicate key down', key)
         return
 
-    if is_key_up(event) and short in unreleased:
+    if is_key_up(event) and without_value in unreleased:
         target_type = EV_KEY
         target_value = 0
-        target_code = unreleased[short]
-        del unreleased[short]
+        target_code = unreleased[without_value][0]
+        del unreleased[without_value]
         logger.spam('%s, releasing %s', key, target_code)
     elif key in key_to_code and is_key_down(event):
         target_type = EV_KEY
         target_value = 1
         target_code = key_to_code[key]
-        unreleased[short] = target_code
+        unreleased[without_value] = (target_code, key)
         logger.spam('%s, maps to %s', key, target_code)
     else:
         target_type = key[0]

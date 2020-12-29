@@ -144,6 +144,7 @@ class KeycodeInjector:
         self.mapping = mapping
         self._process = None
         self._msg_pipe = multiprocessing.Pipe()
+        # TODO test that _key_to_code contains permutations of combinations
         self._key_to_code = self._map_keys_to_codes()
         self.stopped = False
 
@@ -345,7 +346,7 @@ class KeycodeInjector:
             if source is None:
                 continue
 
-            # each device parses the macros with a different handler
+            # each device needs own macro instances to add a custom handler
             logger.debug('Parsing macros for %s', path)
             macros = {}
             for key, output in self.mapping:

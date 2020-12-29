@@ -159,6 +159,23 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(uinput_write_history[1].t, (EV_KEY, 3, 1))
         self.assertEqual(uinput_write_history[2].t, (EV_KEY, 102, 1))
 
+    def test_combination_keycode(self):
+        combination = ((EV_KEY, 1, 1), (EV_KEY, 2, 1))
+        _key_to_code = {
+            combination: 101
+        }
+
+        uinput = UInput()
+        handle_keycode(_key_to_code, {}, InputEvent(*combination[0]), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*combination[1]), uinput)
+
+        self.assertEqual(len(uinput_write_history), 2)
+        # the first event is written and then the triggered combination
+        self.assertEqual(uinput_write_history[0].t, (EV_KEY, 1, 1))
+        self.assertEqual(uinput_write_history[1].t, (EV_KEY, 101, 1))
+
+        # TODO moooooore
+
     def test_handle_keycode_macro(self):
         history = []
 

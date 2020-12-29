@@ -47,8 +47,8 @@ active_macros = {}
 # "I have got this release event, what was this for?"
 # It maps to (output_code, input_event) with input_event being the
 # same as the key, but with the value of e.g. -1 or 1. The complete
-# 3-tuple output event is used for combined button presses. A
-# combination might be desired for D-Pad left, but not D-Pad right.
+# 3-tuple output event is used to track if a combined button press was done.
+# A combination might be desired for D-Pad left, but not D-Pad right.
 unreleased = {}
 
 
@@ -118,12 +118,21 @@ def handle_keycode(key_to_code, macros, event, uinput):
     without_value = (event.type, event.code)
 
     # the finishing key has to be the last element in combination, all
-    # others can have any arbitrary order
+    # others can have any arbitrary order. By checking all unreleased keys,
+    # a + b + c takes priority over b + c, if both mappings exist.
     combination = tuple([value[1] for value in unreleased.values()] + [key])
+    is_combined = False
     if combination in macros or combination in key_to_code:
         # TODO test
         key = combination
-        without_value = [part[:2] for part in combination]
+        without_value = tuple([part[:2] for part in combination])
+        is_combined = True
+
+    print('unreleased', unreleased)
+    print('combination', combination)
+    print('key', key)
+    print('without_value', without_value)
+    print('is_combined', is_combined)
 
     existing_macro = active_macros.get(without_value)
     if existing_macro is not None:
@@ -163,19 +172,25 @@ def handle_keycode(key_to_code, macros, event, uinput):
         target_type = EV_KEY
         target_value = 0
         target_code = unreleased[without_value][0]
-        del unreleased[without_value]
         logger.spam('%s, releasing %s', key, target_code)
     elif key in key_to_code and is_key_down(event):
         target_type = EV_KEY
         target_value = 1
         target_code = key_to_code[key]
-        unreleased[without_value] = (target_code, key)
         logger.spam('%s, maps to %s', key, target_code)
     else:
         target_type = key[0]
         target_code = key[1]
         target_value = key[2]
         logger.spam('%s, unmapped', key)
+
+    if is_key_down(event) and not is_combined:
+        # TODO test
+        unreleased[without_value] = (target_code, key)
+
+    if is_key_up(event) and not is_combined and without_value in unreleased:
+        # TODO test
+        del unreleased[without_value]
 
     uinput.write(target_type, target_code, target_value)
     uinput.syn()

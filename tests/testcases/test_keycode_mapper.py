@@ -104,20 +104,20 @@ class TestKeycodeMapper(unittest.TestCase):
 
         uinput = UInput()
         # a bunch of d-pad key down events at once
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_1), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_4), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_1), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_4), uinput)
 
         # release all of them
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_3), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_6), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_3), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_6), uinput)
 
         # repeat with other values
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_2), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_5), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_2), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_5), uinput)
 
         # release all of them again
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_3), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_6), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_3), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_6), uinput)
 
         self.assertEqual(len(uinput_write_history), 8)
 
@@ -150,9 +150,9 @@ class TestKeycodeMapper(unittest.TestCase):
         }
 
         uinput = UInput()
-        handle_keycode(_key_to_code, {}, {}, InputEvent(EV_KEY, 1, 1), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(EV_KEY, 3, 1), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(EV_KEY, 2, 1), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(EV_KEY, 1, 1), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(EV_KEY, 3, 1), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(EV_KEY, 2, 1), uinput)
 
         self.assertEqual(len(uinput_write_history), 3)
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 101, 1))
@@ -176,8 +176,8 @@ class TestKeycodeMapper(unittest.TestCase):
         macro_mapping[(EV_KEY, 1, 1)].set_handler(lambda *args: history.append(args))
         macro_mapping[(EV_KEY, 2, 1)].set_handler(lambda *args: history.append(args))
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 1), None)
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 2, 1), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 1), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 2, 1), None)
 
         loop = asyncio.get_event_loop()
 
@@ -215,7 +215,7 @@ class TestKeycodeMapper(unittest.TestCase):
 
         """start macro"""
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 1), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 1), None)
 
         loop = asyncio.get_event_loop()
 
@@ -229,7 +229,7 @@ class TestKeycodeMapper(unittest.TestCase):
 
         """stop macro"""
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 0), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 0), None)
 
         loop.run_until_complete(asyncio.sleep(keystroke_sleep * 10 / 1000))
 
@@ -285,7 +285,7 @@ class TestKeycodeMapper(unittest.TestCase):
 
         """start macro 2"""
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 2, 1), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 2, 1), None)
         loop = asyncio.get_event_loop()
 
         loop.run_until_complete(asyncio.sleep(0.1))
@@ -295,8 +295,8 @@ class TestKeycodeMapper(unittest.TestCase):
 
         # spam garbage events
         for _ in range(5):
-            handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 1), None)
-            handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 3, 1), None)
+            handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 1), None)
+            handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 3, 1), None)
             loop.run_until_complete(asyncio.sleep(0.05))
             self.assertTrue(active_macros[(EV_KEY, 1)].holding)
             self.assertTrue(active_macros[(EV_KEY, 1)].running)
@@ -314,7 +314,7 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertNotIn((code_d, 0), history)
 
         # stop macro 2
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 2, 0), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 2, 0), None)
         loop.run_until_complete(asyncio.sleep(0.1))
 
         # it stopped and didn't restart, so the count stays at 1
@@ -335,7 +335,7 @@ class TestKeycodeMapper(unittest.TestCase):
 
         history = []
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 2, 1), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 2, 1), None)
         loop.run_until_complete(asyncio.sleep(0.1))
         self.assertEqual(history.count((code_c, 1)), 1)
         self.assertEqual(history.count((code_c, 0)), 1)
@@ -343,8 +343,8 @@ class TestKeycodeMapper(unittest.TestCase):
         # spam garbage events again, this time key-up events on all other
         # macros
         for _ in range(5):
-            handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 0), None)
-            handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 3, 0), None)
+            handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 0), None)
+            handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 3, 0), None)
             loop.run_until_complete(asyncio.sleep(0.05))
             self.assertFalse(active_macros[(EV_KEY, 1)].holding)
             self.assertFalse(active_macros[(EV_KEY, 1)].running)
@@ -354,7 +354,7 @@ class TestKeycodeMapper(unittest.TestCase):
             self.assertFalse(active_macros[(EV_KEY, 3)].running)
 
         # stop macro 2
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 2, 0), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 2, 0), None)
         loop.run_until_complete(asyncio.sleep(0.1))
         # was started only once
         self.assertEqual(history.count((code_c, 1)), 1)
@@ -364,8 +364,8 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(history.count((code_d, 0)), 1)
 
         # stop all macros
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 0), None)
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 3, 0), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 0), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 3, 0), None)
         loop.run_until_complete(asyncio.sleep(0.1))
 
         # it's stopped and won't write stuff anymore
@@ -402,14 +402,14 @@ class TestKeycodeMapper(unittest.TestCase):
 
         macro_mapping[(EV_KEY, 1, 1)].set_handler(handler)
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 1), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 1), None)
         loop = asyncio.get_event_loop()
 
         loop.run_until_complete(asyncio.sleep(0.1))
         for _ in range(5):
             self.assertTrue(active_macros[(EV_KEY, 1)].holding)
             self.assertTrue(active_macros[(EV_KEY, 1)].running)
-            handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 1), None)
+            handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 1), None)
             loop.run_until_complete(asyncio.sleep(0.05))
 
         # duplicate key down events don't do anything
@@ -419,7 +419,7 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(history.count((code_c, 0)), 0)
 
         # stop
-        handle_keycode({}, macro_mapping, {}, InputEvent(EV_KEY, 1, 0), None)
+        handle_keycode({}, macro_mapping, InputEvent(EV_KEY, 1, 0), None)
         loop.run_until_complete(asyncio.sleep(0.1))
         self.assertEqual(history.count((code_a, 1)), 1)
         self.assertEqual(history.count((code_a, 0)), 1)
@@ -474,15 +474,15 @@ class TestKeycodeMapper(unittest.TestCase):
 
         # key up won't do anything
         uinput = UInput()
-        handle_keycode({}, macro_mapping, {}, InputEvent(*up_1), uinput)
-        handle_keycode({}, macro_mapping, {}, InputEvent(*up_2), uinput)
+        handle_keycode({}, macro_mapping, InputEvent(*up_1), uinput)
+        handle_keycode({}, macro_mapping, InputEvent(*up_2), uinput)
         loop.run_until_complete(asyncio.sleep(0.1))
         self.assertEqual(len(active_macros), 0)
 
         """start macros"""
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(*down_1), None)
-        handle_keycode({}, macro_mapping, {}, InputEvent(*down_2), None)
+        handle_keycode({}, macro_mapping, InputEvent(*down_1), None)
+        handle_keycode({}, macro_mapping, InputEvent(*down_2), None)
 
         # let the mainloop run for some time so that the macro does its stuff
         sleeptime = 500
@@ -497,8 +497,8 @@ class TestKeycodeMapper(unittest.TestCase):
 
         """stop macros"""
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(*up_1), None)
-        handle_keycode({}, macro_mapping, {}, InputEvent(*up_2), None)
+        handle_keycode({}, macro_mapping, InputEvent(*up_1), None)
+        handle_keycode({}, macro_mapping, InputEvent(*up_2), None)
 
         loop.run_until_complete(asyncio.sleep(keystroke_sleep * 10 / 1000))
 
@@ -565,8 +565,8 @@ class TestKeycodeMapper(unittest.TestCase):
         macro_mapping[down_1].set_handler(handler)
         macro_mapping[down_2].set_handler(handler)
 
-        handle_keycode({}, macro_mapping, {}, InputEvent(*down_1), None)
-        handle_keycode({}, macro_mapping, {}, InputEvent(*down_2), None)
+        handle_keycode({}, macro_mapping, InputEvent(*down_1), None)
+        handle_keycode({}, macro_mapping, InputEvent(*down_2), None)
 
         loop = asyncio.get_event_loop()
         sleeptime = config.get('macros.keystroke_sleep_ms') / 1000
@@ -598,10 +598,10 @@ class TestKeycodeMapper(unittest.TestCase):
         }
 
         uinput = UInput()
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_1), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_2), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_3), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_4), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_1), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_2), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_3), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_4), uinput)
 
         self.assertEqual(len(uinput_write_history), 4)
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 41, 1))
@@ -622,16 +622,16 @@ class TestKeycodeMapper(unittest.TestCase):
         """positive"""
 
         for i in range(1, 20):
-            handle_keycode(_key_to_code, {}, {}, InputEvent(*trigger, i), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*trigger, 0), uinput)
+            handle_keycode(_key_to_code, {}, InputEvent(*trigger, i), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*trigger, 0), uinput)
 
         self.assertEqual(len(uinput_write_history), 2)
 
         """negative"""
 
         for i in range(1, 20):
-            handle_keycode(_key_to_code, {}, {}, InputEvent(*trigger, -i), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*trigger, 0), uinput)
+            handle_keycode(_key_to_code, {}, InputEvent(*trigger, -i), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*trigger, 0), uinput)
 
         self.assertEqual(len(uinput_write_history), 4)
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 51, 1))
@@ -650,10 +650,10 @@ class TestKeycodeMapper(unittest.TestCase):
         }
 
         uinput = UInput()
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_1), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_1), uinput)
         for _ in range(10):
-            handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_2), uinput)
-        handle_keycode(_key_to_code, {}, {}, InputEvent(*ev_3), uinput)
+            handle_keycode(_key_to_code, {}, InputEvent(*ev_2), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_3), uinput)
 
         self.assertEqual(len(uinput_write_history), 2)
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 21, 1))

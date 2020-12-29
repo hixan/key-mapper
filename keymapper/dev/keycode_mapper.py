@@ -90,46 +90,7 @@ COMBINATION_INCOMPLETE = 1  # not all keys of the combination are pressed
 NOT_COMBINED = 2  # this key is not part of a combination
 
 
-def resolve_dependencies(key, combi_dependencies):
-    """Get a list of pressed down keys that may make up a combined key press,
-    with key as the newest key, which will get the highest index.
-
-    The first element is the first key that has to be pressed down.
-    """
-    # TODO unittest
-    # TODO unittest a + b + c and b + a + c, all keys being down
-    dependencies = [key]
-
-    while True:
-        dependency = combi_dependencies.get(dependencies[-1])
-
-        if dependency is None:
-            # dependency list completely resolved
-            break
-
-        if isinstance(dependency, list):
-            # a + b + c; d + b + c; [a, d]
-            # take the first one of a or d that is unreleased
-            dependency = [d for d in dependency if unreleased.get(d[:2])][0]
-
-        # (output code, input event)
-        unreleased_entry = unreleased.get(dependency[:2])
-
-        if unreleased_entry is None:
-            return COMBINATION_INCOMPLETE
-
-        if unreleased_entry[1] != key:
-            # For example D-Pad left is the dependency, but D-Pad right is
-            # in unreleased. D-Pad right being unreleased means D-Pad left
-            # cannot be pressed down, they are mutually exclusive.
-            return COMBINATION_INCOMPLETE
-
-        dependencies.append(dependency)
-
-    return dependencies
-
-
-def handle_keycode(key_to_code, macros, combi_dependencies, event, uinput):
+def handle_keycode(key_to_code, macros, event, uinput):
     """Write mapped keycodes, forward unmapped ones and manage macros.
 
     Parameters
@@ -137,13 +98,11 @@ def handle_keycode(key_to_code, macros, combi_dependencies, event, uinput):
     key_to_code : dict
         mapping of (type, code, value) to linux-keycode
         or multiple of those like ((...), (...), ...) for combinations
-    macros : dict
-        mapping of (type, code, value) to _Macro objects
-        or multiple of those like ((...), (...), ...) for combinations.
         combinations need to be present in every possible valid ordering.
         e.g. shift + alt + a and alt + shift + a
-    combi_dependencies : dict
-        See docstring of KeycodeInjector._map_dependencies
+    macros : dict
+        mapping of (type, code, value) to _Macro objects.
+        Combinations work similar as in key_to_code
     event : evdev.InputEvent
     """
     if event.type == EV_KEY and event.value == 2:
@@ -158,16 +117,13 @@ def handle_keycode(key_to_code, macros, combi_dependencies, event, uinput):
     key = (event.type, event.code, sign(event.value))
     without_value = (event.type, event.code)
 
-    dependencies = resolve_dependencies(key, combi_dependencies)
-    # combination = [unreleased.keys()]
-
-    if dependencies == COMBINATION_INCOMPLETE:
-        # failed, maybe later
-        return
-
-    if isinstance(dependencies, list):
-        # the combination is complete. query for the combined key instead
-        key = tuple(dependencies)
+    # the finishing key has to be the last element in combination, all
+    # others can have any arbitrary order
+    combination = tuple([value[1] for value in unreleased.values()] + [key])
+    if combination in macros or combination in key_to_code:
+        # TODO test
+        key = combination
+        without_value = [part[:2] for part in combination]
 
     existing_macro = active_macros.get(without_value)
     if existing_macro is not None:

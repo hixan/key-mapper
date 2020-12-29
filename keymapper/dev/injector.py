@@ -27,6 +27,7 @@ import asyncio
 import time
 import subprocess
 import multiprocessing
+import itertools
 
 import evdev
 from evdev.ecodes import EV_KEY, EV_ABS, EV_REL
@@ -97,64 +98,29 @@ def ensure_numlock(func):
     return wrapped
 
 
-def build_dependency_graph(key_to_code):
-    """To quickly query dependencies for key combinations.
+def store_permutations(target, combination, value):
+    """Store permutations for key combinations.
 
-    This datastructure needs to be able to resolve the following
-    combination dependencies:
+    Store every permutation of combination, while the last
+    element needs to remain the last one. It is the finishing
+    key. E.g. a + b is something different than b + a, but
+    a + b + c is the same as b + a + c
 
-    a + b + c
-    d + b + e
+    a, b and c are tuples of (type, code, value)
 
-    So a simple tree won't suffice. The tree only needs to be resolved
-    from right (newest key) to left (dependencies).
-
-    input c
-    dependencies[c] = [b]
-    dependencies[b] = [a, d]
-    dependencies[a] = []
-    dependencies[d] = []
-
-    a, b, c, d and e are 3-tuples of (type, code, value)
+    If combination is not a tuple of 3-tuples, it just uses it as key without
+    permutating anything.
     """
     # TODO unittest
-    combi_dependencies = {}
-    for key in key_to_code:
-        # could be ((type, code, value), (type, code, value))
-        if not isinstance(key[0], tuple):
-            # it's not a key combination
-            continue
+    if not isinstance(combination, tuple):
+        logger.error('Expected a tuple, but got "%s"', combination)
+        return
 
-        if len(key) <= 1:
-            # a key combination needs multiple keys
-            logger.error('Found broken key combination %s', key)
-            continue
-
-        previous_sub_key = None  # the dependency of sub_key
-        for sub_key in key:
-            # start with the key that should be pressed first.
-            # this key doesn't have any dependencies, so
-            # previous_sub_key is None
-            if sub_key in combi_dependencies:
-                if (
-                    previous_sub_key not in combi_dependencies[sub_key]
-                    and previous_sub_key is not None
-                ):
-                    # first time this is seen as dependency, add it
-                    combi_dependencies[sub_key].append(previous_sub_key)
-            else:
-                # sub_key is seen for the first time (might be present
-                # in other key combinations later)
-                if previous_sub_key is None:
-                    combi_dependencies[sub_key] = []
-                else:
-                    combi_dependencies[sub_key] = [previous_sub_key]
-
-            previous_sub_key = sub_key
-
-    print('combi_dependencies', combi_dependencies)
-
-    return combi_dependencies
+    if isinstance(combination[1], tuple):
+        for permutation in itertools.permutations(combination[:-1]):
+            target[(*permutation, combination[-1])] = value
+    else:
+        target[combination] = value
 
 
 class KeycodeInjector:
@@ -179,7 +145,6 @@ class KeycodeInjector:
         self._process = None
         self._msg_pipe = multiprocessing.Pipe()
         self._key_to_code = self._map_keys_to_codes()
-        self._combi_dependencies = build_dependency_graph(self._key_to_code)
         self.stopped = False
 
         # when moving the joystick and then staying at a position, no
@@ -200,7 +165,7 @@ class KeycodeInjector:
                 logger.error('Don\'t know what %s is', output)
                 continue
 
-            key_to_code[key] = target_code
+            store_permutations(key_to_code, key, target_code)
 
         return key_to_code
 
@@ -389,7 +354,7 @@ class KeycodeInjector:
                     if macro is None:
                         continue
 
-                    macros[key] = macro
+                    store_permutations(macros, key, macro)
 
             if len(macros) == 0:
                 logger.debug('No macros configured')
@@ -493,11 +458,9 @@ class KeycodeInjector:
                 continue
 
             if should_map_event_as_btn(event.type, event.code):
-                # TODO test _combi_dependencies
                 handle_keycode(
                     self._key_to_code,
                     macros,
-                    self._combi_dependencies,
                     event,
                     uinput
                 )

@@ -244,7 +244,17 @@ class Mapping(ConfigBase):
             json_ready_mapping = {}
             # tuple keys are not possible in json, encode them as string
             for key, value in self._mapping.items():
-                new_key = ','.join([str(value) for value in key])
+                if isinstance(key[0], tuple):
+                    # combinations to "1,2,1+1,3,1"
+                    new_key = '+'.join([
+                        ','.join([
+                            str(value)
+                            for value in sub_key
+                        ])
+                        for sub_key in key
+                    ])
+                else:
+                    new_key = ','.join([str(value) for value in key])
                 json_ready_mapping[new_key] = value
 
             preset_dict['mapping'] = json_ready_mapping

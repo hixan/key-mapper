@@ -180,7 +180,7 @@ class TestMapping(unittest.TestCase):
 
         self.mapping.change(one, '1')
         self.mapping.change(two, '2')
-        self.mapping.change(three, '3')
+        self.mapping.change((two, three), '3')
         self.mapping._config['foo'] = 'bar'
         self.mapping.save(get_preset_path('device 1', 'test'))
 
@@ -194,11 +194,12 @@ class TestMapping(unittest.TestCase):
         self.assertEqual(len(loaded), 3)
         self.assertEqual(loaded.get_character(one), '1')
         self.assertEqual(loaded.get_character(two), '2')
-        self.assertEqual(loaded.get_character(three), '3')
+        self.assertEqual(loaded.get_character((two, three)), '3')
         self.assertEqual(loaded._config['foo'], 'bar')
 
     def test_save_load_2(self):
-        # loads mappings with only (type, code) as the key
+        # loads mappings with only (type, code) as the key by using 1 as value,
+        # loads combinations chained with +
         path = os.path.join(tmp, 'presets', 'device 1', 'test.json')
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:

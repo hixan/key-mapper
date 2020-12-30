@@ -362,7 +362,7 @@ class Window:
 
     @with_selected_device
     def on_apply_system_layout_clicked(self, _):
-        """Load the mapping."""
+        """Stop injecting the mapping."""
         self.dbus.stop_injecting(self.selected_device)
         self.show_status(CTX_APPLY, 'Applied the system default')
         logger.info('Applied system default for "%s"', self.selected_preset)

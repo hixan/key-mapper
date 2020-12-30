@@ -140,7 +140,7 @@ class Row(Gtk.ListBoxRow):
         # the current device is a mouse. idle_add this so that the
         # keycode event won't write into the character input as well.
         window = self.window.window
-        GLib.idle_add(lambda: window.set_focus(self.character_input))
+        # GLib.idle_add(lambda: window.set_focus(self.character_input))
         self.highlight()
 
         character = self.get_character()

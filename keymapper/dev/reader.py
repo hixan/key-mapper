@@ -69,6 +69,11 @@ class _KeycodeReader:
         self._process = None
         self.fail_counter = 0
         self.newest_event = None
+        # to keep track of combinations.
+        # "I have got this release event, what was this for?"
+        # A release event for a D-Pad axis might be any direction, hence
+        # this maps from release to input in order to remember it.
+        self._unreleased = {}
 
     def __del__(self):
         self.stop_reading()
@@ -135,6 +140,11 @@ class _KeycodeReader:
             evdev.ecodes.BTN_LEFT,
             evdev.ecodes.BTN_TOOL_DOUBLETAP
         ]
+
+        if event.type == EV_KEY and event.value == 2:
+            # ignore hold-down events
+            # TODO test
+            return
 
         if event.type == EV_KEY and event.code in click_events:
             # disable mapping the left mouse button because it would break
@@ -203,9 +213,21 @@ class _KeycodeReader:
 
         while self._pipe[0].poll():
             event = self._pipe[0].recv()
+            without_value = (event.type, event.code)
 
             if event.value == 0:
+                if without_value in self._unreleased:
+                    # TODO test
+                    del self._unreleased[without_value]
+
                 continue
+
+            # TODO test
+            self._unreleased[without_value] = (
+                event.type,
+                event.code,
+                sign(event.value)
+            )
 
             time = event.sec + event.usec / 1000000
             delta = time - newest_time
@@ -229,11 +251,16 @@ class _KeycodeReader:
 
         self.newest_event = newest_event
 
-        return (None if newest_event is None else (
-            newest_event.type,
-            newest_event.code,
-            sign(newest_event.value)
-        ))
+        # TODO test
+        if len(self._unreleased) > 1:
+            # a combination
+            return tuple(self._unreleased.values())
+        elif len(self._unreleased) == 1:
+            # a single key
+            return list(self._unreleased.values())[0]
+        else:
+            # nothing
+            return None
 
 
 keycode_reader = _KeycodeReader()

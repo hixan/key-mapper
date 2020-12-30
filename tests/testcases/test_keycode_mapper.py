@@ -781,6 +781,8 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 21, 1))
         self.assertEqual(uinput_write_history[1].t, (EV_KEY, 21, 0))
 
+    # TODO test combination won't trigger because keys are released
+
 
 if __name__ == "__main__":
     unittest.main()

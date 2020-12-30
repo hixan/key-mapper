@@ -227,11 +227,18 @@ class TestIntegration(unittest.TestCase):
 
     def test_row_keycode_to_string(self):
         # not an integration test, but I have all the row tests here already
-        self.assertEqual(to_string(EV_KEY, evdev.ecodes.KEY_9, 1), '9')
-        self.assertEqual(to_string(EV_KEY, evdev.ecodes.KEY_SEMICOLON, 1), 'SEMICOLON')
-        self.assertEqual(to_string(EV_ABS, evdev.ecodes.ABS_HAT0X, -1), 'ABS_HAT0X L')
-        self.assertEqual(to_string(EV_ABS, evdev.ecodes.ABS_HAT0X, 1), 'ABS_HAT0X R')
-        self.assertEqual(to_string(EV_KEY, evdev.ecodes.BTN_A, 1), 'BTN_A')
+        self.assertEqual(to_string((EV_KEY, evdev.ecodes.KEY_9, 1)), '9')
+        self.assertEqual(to_string((EV_KEY, evdev.ecodes.KEY_SEMICOLON, 1)), 'SEMICOLON')
+        self.assertEqual(to_string((EV_ABS, evdev.ecodes.ABS_HAT0X, -1)), 'ABS_HAT0X L')
+        self.assertEqual(to_string((EV_ABS, evdev.ecodes.ABS_HAT0X, 1)), 'ABS_HAT0X R')
+        self.assertEqual(to_string((EV_KEY, evdev.ecodes.BTN_A, 1)), 'BTN_A')
+
+        # combinations
+        self.assertEqual(to_string((
+            (EV_KEY, evdev.ecodes.BTN_A, 1),
+            (EV_KEY, evdev.ecodes.BTN_B, 1),
+            (EV_KEY, evdev.ecodes.BTN_C, 1)
+        )), 'BTN_A + BTN_B + BTN_C')
 
     def test_row_simple(self):
         rows = self.window.get('key_list').get_children()
@@ -325,7 +332,7 @@ class TestIntegration(unittest.TestCase):
                 self.assertEqual(row.get_keycode(), key)
                 css_classes = row.get_style_context().list_classes()
                 self.assertIn('changed', css_classes)
-                self.assertEqual(row.keycode_input.get_label(), to_string(*key))
+                self.assertEqual(row.keycode_input.get_label(), to_string(key))
 
         if not expect_success:
             self.assertIsNone(row.get_keycode())

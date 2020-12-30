@@ -351,7 +351,7 @@ class Window:
         if key is None:
             return True
 
-        self.get('keycode').set_text(to_string(*key))
+        self.get('keycode').set_text(to_string(key))
 
         # inform the currently selected row about the new keycode
         row, focused = self.get_focused_row()
@@ -396,7 +396,7 @@ class Window:
             if error is None:
                 continue
 
-            position = to_string(*key)
+            position = to_string(key)
             msg = f'Syntax error at {position}, hover for info'
             self.show_status(CTX_ERROR, msg, error)
 

@@ -38,8 +38,13 @@ for name in system_mapping.list_names():
     store.append([name])
 
 
-def to_string(ev_type, code, value):
+def to_string(key):
     """A nice to show description of the pressed key."""
+    if isinstance(key[0], tuple):
+        return ' + '.join([to_string(sub_key) for sub_key in key])
+
+    ev_type, code, value = key
+
     try:
         key_name = evdev.ecodes.bytype[ev_type][code]
         if isinstance(key_name, list):
@@ -121,14 +126,14 @@ class Row(Gtk.ListBoxRow):
         # keycode is already set by some other row
         existing = custom_mapping.get_character(new_key)
         if existing is not None:
-            msg = f'"{to_string(*new_key)}" already mapped to "{existing}"'
+            msg = f'"{to_string(new_key)}" already mapped to "{existing}"'
             logger.info(msg)
             self.window.get('status_bar').push(CTX_KEYCODE, msg)
             return
 
         # it's legal to display the keycode
         self.window.get('status_bar').remove_all(CTX_KEYCODE)
-        self.keycode_input.set_label(to_string(*new_key))
+        self.keycode_input.set_label(to_string(new_key))
         self.key = new_key
         # switch to the character, don't require mouse input because
         # that would overwrite the key with the mouse-button key if
@@ -225,7 +230,7 @@ class Row(Gtk.ListBoxRow):
         keycode_input.set_size_request(140, -1)
 
         if self.key is not None:
-            keycode_input.set_label(to_string(*self.key))
+            keycode_input.set_label(to_string(self.key))
         else:
             self.show_click_here()
 

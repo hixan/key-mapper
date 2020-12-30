@@ -27,7 +27,7 @@ import evdev
 from evdev.ecodes import EV_REL, EV_KEY, EV_ABS, ABS_HAT0X
 
 from keymapper.dev.injector import is_numlock_on, set_numlock, \
-    ensure_numlock, KeycodeInjector, store_permutations
+    ensure_numlock, KeycodeInjector, store_permutations, is_in_capabilities
 from keymapper.state import custom_mapping, system_mapping
 from keymapper.mapping import Mapping
 from keymapper.config import config
@@ -467,6 +467,28 @@ class TestInjector(unittest.TestCase):
         self.assertEqual(injector._key_to_code.get((ev_2, ev_3, ev_4)), 52)
         self.assertEqual(injector._key_to_code.get((ev_3, ev_2, ev_4)), 52)
         self.assertEqual(len(injector._key_to_code), 3)
+
+    def test_is_in_capabilities(self):
+        key = (1, 2, 1)
+        capabilities = {
+            1: [9, 2, 5]
+        }
+        self.assertTrue(is_in_capabilities(key, capabilities))
+
+        key = ((1, 2, 1), (1, 3, 1))
+        capabilities = {
+            1: [9, 2, 5]
+        }
+        # only one of the codes of the combination is required.
+        # The goal is to make combinations across those sub-devices possible,
+        # that make up one hardware device
+        self.assertTrue(is_in_capabilities(key, capabilities))
+
+        key = ((1, 2, 1), (1, 5, 1))
+        capabilities = {
+            1: [9, 2, 5]
+        }
+        self.assertTrue(is_in_capabilities(key, capabilities))
 
 
 if __name__ == "__main__":

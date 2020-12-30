@@ -122,6 +122,21 @@ def store_permutations(target, combination, value):
         target[combination] = value
 
 
+def is_in_capabilities(key, capabilities):
+    """Are this key or all of its sub keys in the capabilities?"""
+    if isinstance(key[0], tuple):
+        # it's a key combination
+        for sub_key in key:
+            if is_in_capabilities(sub_key, capabilities):
+                return True
+    else:
+        ev_type, code, _ = key
+        if code in capabilities.get(ev_type, []):
+            return True
+
+    return False
+
+
 class KeycodeInjector:
     """Keeps injecting keycodes in the background based on the mapping.
 
@@ -199,8 +214,8 @@ class KeycodeInjector:
         capabilities = device.capabilities(absinfo=False)
 
         needed = False
-        for (ev_type, code, _), _ in self.mapping:
-            if code in capabilities.get(ev_type, []):
+        for key, _ in self.mapping:
+            if is_in_capabilities(key, capabilities):
                 needed = True
                 break
 

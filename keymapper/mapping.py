@@ -190,7 +190,6 @@ class Mapping(ConfigBase):
 
             for key, character in preset_dict['mapping'].items():
                 if '+' in key:
-                    # TODO test
                     chunks = key.split('+')
                     key = tuple([split_key(chunk) for chunk in chunks])
                     if None in key:

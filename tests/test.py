@@ -354,7 +354,7 @@ from keymapper.dev.injector import KeycodeInjector
 from keymapper.config import config
 from keymapper.getdevices import refresh_devices
 from keymapper.state import system_mapping, custom_mapping
-from keymapper.dev.keycode_mapper import active_macros
+from keymapper.dev.keycode_mapper import active_macros, unreleased
 
 # no need for a high number in tests
 KeycodeInjector.regrab_timeout = 0.15
@@ -383,6 +383,9 @@ def cleanup():
 
     for key in list(active_macros.keys()):
         del active_macros[key]
+    for key in list(unreleased.keys()):
+        del unreleased[key]
+
     for key in list(pending_events.keys()):
         del pending_events[key]
 

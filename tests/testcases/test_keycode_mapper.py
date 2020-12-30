@@ -28,7 +28,7 @@ from evdev.ecodes import EV_KEY, EV_ABS, ABS_HAT0X, ABS_HAT0Y, KEY_A, ABS_X, \
     EV_REL, REL_X, BTN_TL
 
 from keymapper.dev.keycode_mapper import should_map_event_as_btn, \
-    active_macros, handle_keycode
+    active_macros, handle_keycode, unreleased
 from keymapper.state import system_mapping
 from keymapper.dev.macros import parse
 from keymapper.config import config
@@ -106,18 +106,26 @@ class TestKeycodeMapper(unittest.TestCase):
         # a bunch of d-pad key down events at once
         handle_keycode(_key_to_code, {}, InputEvent(*ev_1), uinput)
         handle_keycode(_key_to_code, {}, InputEvent(*ev_4), uinput)
+        self.assertEqual(len(unreleased), 2)
+        self.assertEqual(unreleased.get(ev_1[:2]), ((EV_KEY, _key_to_code[ev_1]), ev_1))
+        self.assertEqual(unreleased.get(ev_4[:2]), ((EV_KEY, _key_to_code[ev_4]), ev_4))
 
         # release all of them
         handle_keycode(_key_to_code, {}, InputEvent(*ev_3), uinput)
         handle_keycode(_key_to_code, {}, InputEvent(*ev_6), uinput)
+        self.assertEqual(len(unreleased), 0)
 
         # repeat with other values
         handle_keycode(_key_to_code, {}, InputEvent(*ev_2), uinput)
         handle_keycode(_key_to_code, {}, InputEvent(*ev_5), uinput)
+        self.assertEqual(len(unreleased), 2)
+        self.assertEqual(unreleased.get(ev_2[:2]), ((EV_KEY, _key_to_code[ev_2]), ev_2))
+        self.assertEqual(unreleased.get(ev_5[:2]), ((EV_KEY, _key_to_code[ev_5]), ev_5))
 
         # release all of them again
         handle_keycode(_key_to_code, {}, InputEvent(*ev_3), uinput)
         handle_keycode(_key_to_code, {}, InputEvent(*ev_6), uinput)
+        self.assertEqual(len(unreleased), 0)
 
         self.assertEqual(len(uinput_write_history), 8)
 
@@ -132,6 +140,41 @@ class TestKeycodeMapper(unittest.TestCase):
 
         self.assertEqual(uinput_write_history[6].t, (EV_KEY, 52, 0))
         self.assertEqual(uinput_write_history[7].t, (EV_KEY, 55, 0))
+
+    def test_d_pad_combination(self):
+        ev_1 = (EV_ABS, ABS_HAT0X, 1)
+        ev_2 = (EV_ABS, ABS_HAT0Y, -1)
+
+        ev_3 = (EV_ABS, ABS_HAT0X, 0)
+        ev_4 = (EV_ABS, ABS_HAT0Y, 0)
+
+        _key_to_code = {
+            (ev_1, ev_2): 51,
+            ev_2: 52,
+        }
+
+        uinput = UInput()
+        # a bunch of d-pad key down events at once
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_1), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_2), uinput)
+        # (what_will_be_released, what_caused_the_key_down)
+        self.assertEqual(unreleased.get(ev_1[:2]), ((EV_ABS, ABS_HAT0X), ev_1))
+        self.assertEqual(unreleased.get(ev_2[:2]), ((EV_KEY, 51), ev_2))
+        self.assertEqual(len(unreleased), 2)
+
+        # ev_1 is unmapped and the other is the triggered combination
+        self.assertEqual(len(uinput_write_history), 2)
+        self.assertEqual(uinput_write_history[0].t, ev_1)
+        self.assertEqual(uinput_write_history[1].t, (EV_KEY, 51, 1))
+
+        # release all of them
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_3), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*ev_4), uinput)
+        self.assertEqual(len(unreleased), 0)
+
+        self.assertEqual(len(uinput_write_history), 4)
+        self.assertEqual(uinput_write_history[2].t, ev_3)
+        self.assertEqual(uinput_write_history[3].t, (EV_KEY, 51, 0))
 
     def test_should_map_event_as_btn(self):
         self.assertTrue(should_map_event_as_btn(EV_ABS, ABS_HAT0X))

@@ -49,6 +49,7 @@ active_macros = {}
 # same as the key, but with the value of e.g. -1 or 1. The complete
 # 3-tuple output event is used to track if a combined button press was done.
 # A combination might be desired for D-Pad left, but not D-Pad right.
+# (what_will_be_released, what_caused_the_key_down)
 unreleased = {}
 
 
@@ -114,27 +115,24 @@ def handle_keycode(key_to_code, macros, event, uinput):
     # normalize event numbers to one of -1, 0, +1. Otherwise mapping
     # trigger values that are between 1 and 255 is not possible, because
     # they might skip the 1 when pressed fast enough.
+    # The key used to index the mappings
     key = (event.type, event.code, sign(event.value))
-    without_value = (event.type, event.code)
+
+    # the tuple of the actual input event. Used to forward the event if it is
+    # not mapped, and to index unreleased and active_macros
+    event_tuple = (event.type, event.code, sign(event.value))
+    type_code = (event.type, event.code)
 
     # the finishing key has to be the last element in combination, all
     # others can have any arbitrary order. By checking all unreleased keys,
     # a + b + c takes priority over b + c, if both mappings exist.
     combination = tuple([value[1] for value in unreleased.values()] + [key])
-    is_combined = False
     if combination in macros or combination in key_to_code:
         # TODO test
         key = combination
-        without_value = tuple([part[:2] for part in combination])
-        is_combined = True
+        key_without_val = tuple([part[:2] for part in combination])
 
-    print('unreleased', unreleased)
-    print('combination', combination)
-    print('key', key)
-    print('without_value', without_value)
-    print('is_combined', is_combined)
-
-    existing_macro = active_macros.get(without_value)
+    existing_macro = active_macros.get(type_code)
     if existing_macro is not None:
         if is_key_up(event) and not existing_macro.running:
             # key was released, but macro already stopped
@@ -155,42 +153,41 @@ def handle_keycode(key_to_code, macros, event, uinput):
 
     if key in macros:
         macro = macros[key]
-        active_macros[without_value] = macro
+        active_macros[type_code] = macro
         macro.press_key()
         logger.spam('got %s, maps to macro %s', key, macro.code)
         asyncio.ensure_future(macro.run())
         return
 
-    if is_key_down(event) and without_value in unreleased:
+    if is_key_down(event) and type_code in unreleased:
         # duplicate key-down. skip this event. Avoid writing millions of
         # key-down events when a continuous value is reported, for example
         # for gamepad triggers
         logger.spam('%s, duplicate key down', key)
         return
 
-    if is_key_up(event) and without_value in unreleased:
-        target_type = EV_KEY
+    if is_key_up(event) and type_code in unreleased:
+        target_type, target_code = unreleased[type_code][0]
         target_value = 0
-        target_code = unreleased[without_value][0]
         logger.spam('%s, releasing %s', key, target_code)
     elif key in key_to_code and is_key_down(event):
         target_type = EV_KEY
-        target_value = 1
         target_code = key_to_code[key]
+        target_value = 1
         logger.spam('%s, maps to %s', key, target_code)
     else:
-        target_type = key[0]
-        target_code = key[1]
-        target_value = key[2]
+        target_type = event_tuple[0]
+        target_code = event_tuple[1]
+        target_value = event_tuple[2]
         logger.spam('%s, unmapped', key)
 
-    if is_key_down(event) and not is_combined:
-        # TODO test
-        unreleased[without_value] = (target_code, key)
+    if is_key_down(event):
+        # for a combination, the last key that was pressed is also the
+        # key that releases it, so type_code is used to index this.
+        unreleased[type_code] = ((target_type, target_code), event_tuple)
 
-    if is_key_up(event) and not is_combined and without_value in unreleased:
-        # TODO test
-        del unreleased[without_value]
+    if is_key_up(event) and type_code in unreleased:
+        del unreleased[type_code]
 
     uinput.write(target_type, target_code, target_value)
     uinput.syn()

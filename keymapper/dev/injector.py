@@ -158,7 +158,6 @@ class KeycodeInjector:
         self.mapping = mapping
         self._process = None
         self._msg_pipe = multiprocessing.Pipe()
-        # TODO test that _key_to_code contains permutations of combinations
         self._key_to_code = self._map_keys_to_codes()
         self.stopped = False
 

@@ -217,6 +217,24 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 1, 1))
         self.assertEqual(uinput_write_history[1].t, (EV_KEY, 101, 1))
 
+        # release them
+        handle_keycode(_key_to_code, {}, InputEvent(*combination[0][:2], 0), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*combination[1][:2], 0), uinput)
+        # the first key writes its release event. The second key is hidden
+        # behind the executed combination. The result of the combination is
+        # also released, because it acts like a key.
+        self.assertEqual(len(uinput_write_history), 4)
+        self.assertEqual(uinput_write_history[2].t, (EV_KEY, 1, 0))
+        self.assertEqual(uinput_write_history[3].t, (EV_KEY, 101, 0))
+
+        # press them in the wrong order (the wrong key at the end, the order
+        # of all other keys won't matter). no combination should be triggered
+        handle_keycode(_key_to_code, {}, InputEvent(*combination[1]), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*combination[0]), uinput)
+        self.assertEqual(len(uinput_write_history), 6)
+        self.assertEqual(uinput_write_history[4].t, (EV_KEY, 2, 1))
+        self.assertEqual(uinput_write_history[5].t, (EV_KEY, 1, 1))
+
     def test_combination_keycode_2(self):
         combination_1 = (
             (EV_KEY, 1, 1),

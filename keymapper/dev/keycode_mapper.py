@@ -128,9 +128,7 @@ def handle_keycode(key_to_code, macros, event, uinput):
     # a + b + c takes priority over b + c, if both mappings exist.
     combination = tuple([value[1] for value in unreleased.values()] + [key])
     if combination in macros or combination in key_to_code:
-        # TODO test
         key = combination
-        key_without_val = tuple([part[:2] for part in combination])
 
     existing_macro = active_macros.get(type_code)
     if existing_macro is not None:

@@ -229,9 +229,15 @@ class TestKeycodeMapper(unittest.TestCase):
             (EV_KEY, 3, 1),
             (EV_KEY, 4, 1)
         )
+
+        down_5 = (EV_KEY, 5, 1)
+        up_5 = (EV_KEY, 5, 0)
+        up_4 = (EV_KEY, 4, 0)
+
         _key_to_code = {
             combination_1: 101,
-            combination_2: 102
+            combination_2: 102,
+            down_5: 103
         }
 
         uinput = UInput()
@@ -247,11 +253,19 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(uinput_write_history[2].t, (EV_KEY, 3, 1))
         self.assertEqual(uinput_write_history[3].t, (EV_KEY, 101, 1))
 
-        # TODO moooooore
-        #  holding with a combination
-        #  holding with a combination and then adding one more key down
-        #   it should keep holding and execute the unrelated key
-        #  3-combination and single keys writing stuff
+        # while the combination is down, another unrelated key can be used
+        handle_keycode(_key_to_code, {}, InputEvent(*down_5), uinput)
+        self.assertEqual(len(uinput_write_history), 5)
+        self.assertEqual(uinput_write_history[4].t, (EV_KEY, 103, 1))
+
+        # release the combination by releasing the last key, and release
+        # the unrelated key
+        handle_keycode(_key_to_code, {}, InputEvent(*up_4), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*up_5), uinput)
+        self.assertEqual(len(uinput_write_history), 7)
+
+        self.assertEqual(uinput_write_history[5].t, (EV_KEY, 101, 0))
+        self.assertEqual(uinput_write_history[6].t, (EV_KEY, 103, 0))
 
     def test_handle_keycode_macro(self):
         history = []
@@ -529,7 +543,8 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(count_before, count_after)
 
     def test_hold_two(self):
-        # holding two macros at the same time
+        # holding two macros at the same time,
+        # the first one is triggered by a combination
         history = []
 
         code_1 = 100
@@ -546,37 +561,46 @@ class TestKeycodeMapper(unittest.TestCase):
         system_mapping._set('b', code_b)
         system_mapping._set('c', code_c)
 
-        key_1 = (EV_KEY, 1)
+        key_0 = (EV_KEY, 10)
+        key_1 = (EV_KEY, 11)
         key_2 = (EV_ABS, ABS_HAT0X)
+        down_0 = (*key_0, 1)
         down_1 = (*key_1, 1)
         down_2 = (*key_2, -1)
+        up_0 = (*key_0, 0)
         up_1 = (*key_1, 0)
         up_2 = (*key_2, 0)
 
         macro_mapping = {
-            down_1: parse('k(1).h(k(2)).k(3)', self.mapping),
+            (down_0, down_1): parse('k(1).h(k(2)).k(3)', self.mapping),
             down_2: parse('k(a).h(k(b)).k(c)', self.mapping)
         }
 
         def handler(*args):
             history.append(args)
 
-        macro_mapping[down_1].set_handler(handler)
+        macro_mapping[(down_0, down_1)].set_handler(handler)
         macro_mapping[down_2].set_handler(handler)
 
         loop = asyncio.get_event_loop()
 
+        macros_uinput = UInput()
+        keys_uinput = UInput()
+
         # key up won't do anything
-        uinput = UInput()
-        handle_keycode({}, macro_mapping, InputEvent(*up_1), uinput)
-        handle_keycode({}, macro_mapping, InputEvent(*up_2), uinput)
+        handle_keycode({}, macro_mapping, InputEvent(*up_0), macros_uinput)
+        handle_keycode({}, macro_mapping, InputEvent(*up_1), macros_uinput)
+        handle_keycode({}, macro_mapping, InputEvent(*up_2), macros_uinput)
         loop.run_until_complete(asyncio.sleep(0.1))
         self.assertEqual(len(active_macros), 0)
 
         """start macros"""
 
-        handle_keycode({}, macro_mapping, InputEvent(*down_1), None)
-        handle_keycode({}, macro_mapping, InputEvent(*down_2), None)
+        handle_keycode({}, macro_mapping, InputEvent(*down_0), keys_uinput)
+        self.assertEqual(keys_uinput.write_count, 1)
+        handle_keycode({}, macro_mapping, InputEvent(*down_1), keys_uinput)
+        handle_keycode({}, macro_mapping, InputEvent(*down_2), keys_uinput)
+        self.assertEqual(keys_uinput.write_count, 1)
 
         # let the mainloop run for some time so that the macro does its stuff
         sleeptime = 500
@@ -591,6 +615,7 @@ class TestKeycodeMapper(unittest.TestCase):
 
         """stop macros"""
 
+        # releasing the last key of a combination releases the whole macro
         handle_keycode({}, macro_mapping, InputEvent(*up_1), None)
         handle_keycode({}, macro_mapping, InputEvent(*up_2), None)
 
@@ -734,6 +759,9 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(uinput_write_history[3].t, (EV_KEY, 52, 0))
 
     def test_ignore_hold(self):
+        # hold as in event-value 2, not in macro-hold.
+        # linux will generate events with value 2 after key-mapper injected
+        # the key-press, so key-mapper doesn't need to forward them.
         key = (EV_KEY, KEY_A)
         ev_1 = (*key, 1)
         ev_2 = (*key, 2)
@@ -752,8 +780,6 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(len(uinput_write_history), 2)
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 21, 1))
         self.assertEqual(uinput_write_history[1].t, (EV_KEY, 21, 0))
-        # linux will generate events with value 2 after key-mapper injected
-        # the key-press
 
 
 if __name__ == "__main__":

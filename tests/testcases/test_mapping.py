@@ -24,7 +24,7 @@ import unittest
 import json
 from evdev.ecodes import EV_KEY, EV_ABS, ABS_HAT0X, KEY_A
 
-from keymapper.mapping import Mapping
+from keymapper.mapping import Mapping, verify_key
 from keymapper.state import SystemMapping, XMODMAP_FILENAME
 from keymapper.config import config
 from keymapper.paths import get_preset_path
@@ -291,6 +291,22 @@ class TestMapping(unittest.TestCase):
         self.assertEqual(len(self.mapping), 3)
         self.mapping.empty()
         self.assertEqual(len(self.mapping), 0)
+
+    def test_verify_key(self):
+        self.assertRaises(ValueError, lambda: verify_key(1))
+        self.assertRaises(ValueError, lambda: verify_key(None))
+        self.assertRaises(ValueError, lambda: verify_key([1]))
+        self.assertRaises(ValueError, lambda: verify_key((1,)))
+        self.assertRaises(ValueError, lambda: verify_key((1, 2)))
+        self.assertRaises(ValueError, lambda: verify_key(('1', '2', '3')))
+        self.assertRaises(ValueError, lambda: verify_key('1'))
+        self.assertRaises(ValueError, lambda: verify_key('(1,2,3)'))
+        self.assertRaises(ValueError, lambda: verify_key(((1, 2, 3), (1, 2, '3'))))
+        self.assertRaises(ValueError, lambda: verify_key(((1, 2, 3), (1, 2, 3), None)))
+
+        # those don't raise errors
+        verify_key(((1, 2, 3), (1, 2, 3)))
+        verify_key((1, 2, 3))
 
 
 if __name__ == "__main__":

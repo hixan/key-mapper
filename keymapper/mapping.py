@@ -32,12 +32,21 @@ from keymapper.config import ConfigBase, config
 
 
 def verify_key(key):
-    """Check if the key describes a tuple of (type, code, value) ints."""
-    if len(key) != 3:
+    """Check if the key describes a tuple or tuples of (type, code, value).
+
+    For combinations it could be e.g. ((1, 2, 1), (1, 3, 1)).
+    """
+    if not isinstance(key, tuple):
         raise ValueError(f'Expected keys to be a 3-tuple, but got {key}')
 
-    if sum([not isinstance(value, int) for value in key]) != 0:
-        raise ValueError(f'Can only use numbers in the tuples, but got {key}')
+    if isinstance(key[0], tuple):
+        for sub_key in key:
+            verify_key(sub_key)
+    else:
+        if len(key) != 3:
+            raise ValueError(f'Expected key to be a 3-tuple, but got {key}')
+        if sum([not isinstance(value, int) for value in key]) != 0:
+            raise ValueError(f'Can only use numbers, but got {key}')
 
 
 def split_key(key):
@@ -75,7 +84,7 @@ class Mapping(ConfigBase):
 
     def __iter__(self):
         """Iterate over tuples of unique keycodes and their character."""
-        return iter(sorted(self._mapping.items()))
+        return iter(self._mapping.items())
 
     def __len__(self):
         return len(self._mapping)

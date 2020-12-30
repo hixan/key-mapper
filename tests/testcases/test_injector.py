@@ -446,6 +446,28 @@ class TestInjector(unittest.TestCase):
         store_permutations(target, 1, 1357)
         self.assertEqual(len(target), 9)
 
+    def test_key_to_code(self):
+        mapping = Mapping()
+        ev_1 = (EV_KEY, 41, 1)
+        ev_2 = (EV_KEY, 42, 1)
+        ev_3 = (EV_KEY, 43, 1)
+        ev_4 = (EV_KEY, 44, 1)
+        mapping.change(ev_1, 'a')
+        # a combination
+        mapping.change((ev_2, ev_3, ev_4), 'b')
+        self.assertEqual(mapping.get_character((ev_2, ev_3, ev_4)), 'b')
+
+        system_mapping.clear()
+        system_mapping._set('a', 51)
+        system_mapping._set('b', 52)
+
+        injector = KeycodeInjector('device 1', mapping)
+        self.assertEqual(injector._key_to_code.get(ev_1), 51)
+        # permutations to make matching combinations easier
+        self.assertEqual(injector._key_to_code.get((ev_2, ev_3, ev_4)), 52)
+        self.assertEqual(injector._key_to_code.get((ev_3, ev_2, ev_4)), 52)
+        self.assertEqual(len(injector._key_to_code), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

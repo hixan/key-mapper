@@ -174,7 +174,41 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(uinput_write_history[0].t, (EV_KEY, 1, 1))
         self.assertEqual(uinput_write_history[1].t, (EV_KEY, 101, 1))
 
+    def test_combination_keycode_2(self):
+        combination_1 = (
+            (EV_KEY, 1, 1),
+            (EV_KEY, 2, 1),
+            (EV_KEY, 3, 1),
+            (EV_KEY, 4, 1)
+        )
+        combination_2 = (
+            (EV_KEY, 2, 1),
+            (EV_KEY, 3, 1),
+            (EV_KEY, 4, 1)
+        )
+        _key_to_code = {
+            combination_1: 101,
+            combination_2: 102
+        }
+
+        uinput = UInput()
+        handle_keycode(_key_to_code, {}, InputEvent(*combination_1[0]), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*combination_1[1]), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*combination_1[2]), uinput)
+        handle_keycode(_key_to_code, {}, InputEvent(*combination_1[3]), uinput)
+
+        self.assertEqual(len(uinput_write_history), 4)
+        # the first event is written and then the triggered combination
+        self.assertEqual(uinput_write_history[0].t, (EV_KEY, 1, 1))
+        self.assertEqual(uinput_write_history[1].t, (EV_KEY, 2, 1))
+        self.assertEqual(uinput_write_history[2].t, (EV_KEY, 3, 1))
+        self.assertEqual(uinput_write_history[3].t, (EV_KEY, 101, 1))
+
         # TODO moooooore
+        #  holding with a combination
+        #  holding with a combination and then adding one more key down
+        #   it should keep holding and execute the unrelated key
+        #  3-combination and single keys writing stuff
 
     def test_handle_keycode_macro(self):
         history = []

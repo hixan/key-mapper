@@ -27,7 +27,7 @@ import evdev
 from evdev.ecodes import EV_REL, EV_KEY, EV_ABS, ABS_HAT0X
 
 from keymapper.dev.injector import is_numlock_on, set_numlock, \
-    ensure_numlock, KeycodeInjector
+    ensure_numlock, KeycodeInjector, store_permutations
 from keymapper.state import custom_mapping, system_mapping
 from keymapper.mapping import Mapping
 from keymapper.config import config
@@ -416,6 +416,35 @@ class TestInjector(unittest.TestCase):
 
         numlock_after = is_numlock_on()
         self.assertEqual(numlock_before, numlock_after)
+
+    def test_store_permutations(self):
+        target = {}
+
+        store_permutations(target, ((1,), (2,), (3,), (4,)), 1234)
+        self.assertEqual(len(target), 6)
+        self.assertEqual(target[((1,), (2,), (3,), (4,))], 1234)
+        self.assertEqual(target[((1,), (3,), (2,), (4,))], 1234)
+        self.assertEqual(target[((2,), (1,), (3,), (4,))], 1234)
+        self.assertEqual(target[((2,), (3,), (1,), (4,))], 1234)
+        self.assertEqual(target[((3,), (1,), (2,), (4,))], 1234)
+        self.assertEqual(target[((3,), (2,), (1,), (4,))], 1234)
+
+        store_permutations(target, ((1,), (2,)), 5678)
+        self.assertEqual(len(target), 7)
+        self.assertEqual(target[((1,), (2,))], 5678)
+
+        store_permutations(target, ((1,),), 3456)
+        self.assertEqual(len(target), 8)
+        self.assertEqual(target[((1,),)], 3456)
+
+        store_permutations(target, (1,), 7890)
+        self.assertEqual(len(target), 9)
+        self.assertEqual(target[(1,)], 7890)
+
+        # only accepts tuples, because key-mapper always uses tuples
+        # for this stuff
+        store_permutations(target, 1, 1357)
+        self.assertEqual(len(target), 9)
 
 
 if __name__ == "__main__":

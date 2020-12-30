@@ -40,6 +40,32 @@ def verify_key(key):
         raise ValueError(f'Can only use numbers in the tuples, but got {key}')
 
 
+def split_key(key):
+    """Take a key like "1,2,3" and return a 3-tuple of ints."""
+    if ',' not in key:
+        logger.error('Found invalid key: "%s"', key)
+        return None
+
+    if key.count(',') == 1:
+        # support for legacy mapping objects that didn't include
+        # the value in the key
+        ev_type, code = key.split(',')
+        value = 1
+    elif key.count(',') == 2:
+        ev_type, code, value = key.split(',')
+    else:
+        logger.error('Found more than two commas in the key: "%s"', key)
+        return None
+
+    try:
+        key = (int(ev_type), int(code), int(value))
+    except ValueError:
+        logger.error('Found non-int in: "%s"', key)
+        return None
+
+    return key
+
+
 class Mapping(ConfigBase):
     """Contains and manages mappings and config of a single preset."""
     def __init__(self):
@@ -163,24 +189,16 @@ class Mapping(ConfigBase):
                 return
 
             for key, character in preset_dict['mapping'].items():
-                if ',' not in key:
-                    logger.error('Found invalid key: "%s"', key)
-                    continue
-
-                if key.count(',') == 1:
-                    # support for legacy mapping objects that didn't include
-                    # the value in the key
-                    ev_type, code = key.split(',')
-                    value = 1
-
-                if key.count(',') == 2:
-                    ev_type, code, value = key.split(',')
-
-                try:
-                    key = (int(ev_type), int(code), int(value))
-                except ValueError:
-                    logger.error('Found non-int in: "%s"', key)
-                    continue
+                if '+' in key:
+                    # TODO test
+                    chunks = key.split('+')
+                    key = tuple([split_key(chunk) for chunk in chunks])
+                    if None in key:
+                        continue
+                else:
+                    key = split_key(key)
+                    if key is None:
+                        continue
 
                 logger.spam('%s maps to %s', key, character)
                 self._mapping[key] = character

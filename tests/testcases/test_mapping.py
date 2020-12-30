@@ -206,15 +206,25 @@ class TestMapping(unittest.TestCase):
                 'mapping': {
                     f'{EV_KEY},3': 'a',
                     f'{EV_ABS},{ABS_HAT0X},-1': 'b',
-                    f'{EV_ABS},{ABS_HAT0X},1': 'c',
+                    f'{EV_ABS},1,1+{EV_ABS},2,-1+{EV_ABS},3,1': 'c',
+                    # ignored because broken
+                    f'3,1,1+': 'd',
+                    f'3,1,1,2': 'e',
+                    f'3': 'e',
+                    f'+3,1,2': 'f',
+                    f',,+3,1,2': 'g',
+                    f'': 'h',
                 }
             }, file)
 
         loaded = Mapping()
         loaded.load(get_preset_path('device 1', 'test'))
+        self.assertEqual(len(loaded), 3)
         self.assertEqual(loaded.get_character((EV_KEY, 3, 1)), 'a')
         self.assertEqual(loaded.get_character((EV_ABS, ABS_HAT0X, -1)), 'b')
-        self.assertEqual(loaded.get_character((EV_ABS, ABS_HAT0X, 1)), 'c')
+        self.assertEqual(loaded.get_character(
+            ((EV_ABS, 1, 1), (EV_ABS, 2, -1), (EV_ABS, 3, 1))
+        ), 'c')
 
     def test_change(self):
         ev_1 = (EV_KEY, 1, 111)

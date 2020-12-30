@@ -111,12 +111,11 @@ def store_permutations(target, combination, value):
     If combination is not a tuple of 3-tuples, it just uses it as key without
     permutating anything.
     """
-    # TODO unittest
     if not isinstance(combination, tuple):
         logger.error('Expected a tuple, but got "%s"', combination)
         return
 
-    if isinstance(combination[1], tuple):
+    if isinstance(combination[0], tuple):
         for permutation in itertools.permutations(combination[:-1]):
             target[(*permutation, combination[-1])] = value
     else:

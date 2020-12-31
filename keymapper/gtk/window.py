@@ -352,7 +352,6 @@ class Window:
 
         if isinstance(focused, Gtk.ToggleButton):
             if not keycode_reader.are_keys_pressed():
-                # TODO test
                 row.release()
                 return True
 

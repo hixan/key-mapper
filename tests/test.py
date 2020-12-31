@@ -352,6 +352,7 @@ patch_select()
 from keymapper.logger import update_verbosity
 from keymapper.dev.injector import KeycodeInjector
 from keymapper.config import config
+from keymapper.dev.reader import keycode_reader
 from keymapper.getdevices import refresh_devices
 from keymapper.state import system_mapping, custom_mapping
 from keymapper.dev.keycode_mapper import active_macros, unreleased
@@ -365,6 +366,11 @@ _fixture_copy = copy.deepcopy(fixtures)
 
 def cleanup():
     """Reset the applications state."""
+    keycode_reader.stop_reading()
+    keycode_reader.clear()
+    keycode_reader.newest_event = None
+    keycode_reader._unreleased = {}
+
     for task in asyncio.Task.all_tasks():
         task.cancel()
 

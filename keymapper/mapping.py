@@ -136,6 +136,7 @@ class Mapping(ConfigBase):
             '%s will map to %s, replacing %s',
             new_key, character, previous_key
         )
+        self.clear(new_key)  # this also clears all equivalent keys
         self._mapping[new_key] = character
 
         if previous_key is not None:
@@ -161,6 +162,14 @@ class Mapping(ConfigBase):
                 event value. Usually you want 1 (down)
         """
         verify_key(key)
+
+        if isinstance(key[0], tuple):
+            for permutation in itertools.permutations(key[:-1]):
+                permutation += (key[-1],)
+                if permutation in self._mapping:
+                    logger.debug('%s will be cleared', permutation)
+                    del self._mapping[permutation]
+            return
 
         if self._mapping.get(key) is not None:
             logger.debug('%s will be cleared', key)
@@ -281,7 +290,6 @@ class Mapping(ConfigBase):
             with the last key being always at the end, to work well with
             combinations.
         """
-        # TODO test
         if isinstance(key[0], tuple):
             for permutation in itertools.permutations(key[:-1]):
                 permutation += (key[-1],)

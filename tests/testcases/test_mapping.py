@@ -228,6 +228,8 @@ class TestMapping(unittest.TestCase):
         ), 'c')
 
     def test_change(self):
+        # the reader would not report values like 111 or 222, only 1 or -1.
+        # the mapping just does what it is told, so it accepts them.
         ev_1 = (EV_KEY, 1, 111)
         ev_2 = (EV_KEY, 1, 222)
         ev_3 = (EV_KEY, 2, 111)
@@ -261,6 +263,33 @@ class TestMapping(unittest.TestCase):
         self.mapping.change(ev_4, 'e', ev_4)
         self.assertEqual(self.mapping.get_character(ev_4), 'e')
         self.assertEqual(len(self.mapping), 2)
+
+    def test_combinations(self):
+        ev_1 = (EV_KEY, 1, 111)
+        ev_2 = (EV_KEY, 1, 222)
+        ev_3 = (EV_KEY, 2, 111)
+        ev_4 = (EV_ABS, 1, 111)
+        combi_1 = (ev_1, ev_2, ev_3)
+        combi_2 = (ev_2, ev_1, ev_3)
+        combi_3 = (ev_1, ev_2, ev_4)
+
+        self.mapping.change(combi_1, 'a')
+        self.assertEqual(self.mapping.get_character(combi_1), 'a')
+        self.assertEqual(self.mapping.get_character(combi_2), 'a')
+        # since combi_1 and combi_2 are equivalent, a changes to b
+        self.mapping.change(combi_2, 'b')
+        self.assertEqual(self.mapping.get_character(combi_1), 'b')
+        self.assertEqual(self.mapping.get_character(combi_2), 'b')
+
+        self.mapping.change(combi_3, 'c')
+        self.assertEqual(self.mapping.get_character(combi_1), 'b')
+        self.assertEqual(self.mapping.get_character(combi_2), 'b')
+        self.assertEqual(self.mapping.get_character(combi_3), 'c')
+
+        self.mapping.change(combi_3, 'c', combi_1)
+        self.assertIsNone(self.mapping.get_character(combi_1))
+        self.assertIsNone(self.mapping.get_character(combi_2))
+        self.assertEqual(self.mapping.get_character(combi_3), 'c')
 
     def test_clear(self):
         # does nothing

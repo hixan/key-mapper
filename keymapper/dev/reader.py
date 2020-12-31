@@ -89,6 +89,7 @@ class _KeycodeReader:
         """Next time when reading don't return the previous keycode."""
         # just call read to clear the pipe
         self.read()
+        self._unreleased = {}
 
     def start_reading(self, device_name):
         """Tell the evdev lib to start looking for keycodes.
@@ -143,7 +144,6 @@ class _KeycodeReader:
 
         if event.type == EV_KEY and event.value == 2:
             # ignore hold-down events
-            # TODO test
             return
 
         if event.type == EV_KEY and event.code in click_events:
@@ -194,7 +194,6 @@ class _KeycodeReader:
 
     def are_keys_pressed(self):
         """Check if any keys currently pressed down."""
-        # TODO test
         return len(self._unreleased) > 0
 
     def read(self):
@@ -222,12 +221,10 @@ class _KeycodeReader:
 
             if event.value == 0:
                 if without_value in self._unreleased:
-                    # TODO test
                     del self._unreleased[without_value]
 
                 continue
 
-            # TODO test
             self._unreleased[without_value] = (
                 event.type,
                 event.code,
@@ -256,7 +253,6 @@ class _KeycodeReader:
 
         self.newest_event = newest_event
 
-        # TODO test
         if len(self._unreleased) > 1:
             # a combination
             return tuple(self._unreleased.values())

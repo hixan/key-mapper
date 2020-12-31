@@ -104,7 +104,6 @@ class Row(Gtk.ListBoxRow):
 
     def release(self):
         """Tell the row that no keys are currently pressed down."""
-        # TODO test
         if self.state == HOLDING:
             # A key was pressed and then released.
             # Switch to the character. idle_add this so that the
@@ -154,7 +153,7 @@ class Row(Gtk.ListBoxRow):
 
         # always ask for get_child to set the label, otherwise line breaking
         # has to be configured again.
-        self.keycode_input.get_child().set_label(to_string(new_key))
+        self.set_keycode_input_label(to_string(new_key))
 
         self.key = new_key
 
@@ -208,7 +207,7 @@ class Row(Gtk.ListBoxRow):
         if self.get_keycode() is not None:
             return
 
-        self.keycode_input.get_child().set_label('click here')
+        self.set_keycode_input_label('click here')
         self.keycode_input.set_opacity(0.3)
 
     def show_press_key(self):
@@ -216,20 +215,29 @@ class Row(Gtk.ListBoxRow):
         if self.get_keycode() is not None:
             return
 
-        self.keycode_input.get_child().set_label('press key')
+        self.set_keycode_input_label('press key')
         self.keycode_input.set_opacity(1)
 
-    def keycode_input_focus(self, *args):
+    def on_keycode_input_focus(self, *args):
         """Refresh useful usage information."""
         self.show_press_key()
         self.window.can_modify_mapping()
 
-    def keycode_input_unfocus(self, *args):
-        """Refresh useful usage information."""
+    def on_keycode_input_unfocus(self, *args):
+        """Refresh useful usage information and set some state stuff."""
         self.show_click_here()
         self.keycode_input.set_active(False)
-        # TODO test
         self.state = IDLE
+
+    def set_keycode_input_label(self, label):
+        """Set the label of the keycode input."""
+        self.keycode_input.set_label(label)
+        # make the child label widget break lines, important for
+        # long combinations
+        self.keycode_input.get_child().set_line_wrap(True)
+        self.keycode_input.get_child().set_line_wrap_mode(2)
+        self.keycode_input.get_child().set_max_width_chars(15)
+        self.keycode_input.get_child().set_justify(Gtk.Justification.CENTER)
 
     def put_together(self, character):
         """Create all child GTK widgets and connect their signals."""
@@ -246,15 +254,10 @@ class Row(Gtk.ListBoxRow):
 
         keycode_input = Gtk.ToggleButton()
         self.keycode_input = keycode_input
-        keycode_input.set_label('')  # create the child widget
         keycode_input.set_size_request(140, -1)
-        keycode_input.get_child().set_line_wrap(True)
-        keycode_input.get_child().set_line_wrap_mode(2)
-        keycode_input.get_child().set_max_width_chars(15)
-        keycode_input.get_child().set_justify(Gtk.Justification.CENTER)
 
         if self.key is not None:
-            keycode_input.get_child().set_label(to_string(self.key))
+            self.set_keycode_input_label(to_string(self.key))
         else:
             self.show_click_here()
 
@@ -262,11 +265,11 @@ class Row(Gtk.ListBoxRow):
         # something else in the UI
         keycode_input.connect(
             'focus-in-event',
-            self.keycode_input_focus
+            self.on_keycode_input_focus
         )
         keycode_input.connect(
             'focus-out-event',
-            self.keycode_input_unfocus
+            self.on_keycode_input_unfocus
         )
         # don't leave the input when using arrow keys or tab. wait for the
         # window to consume the keycode from the reader
@@ -313,6 +316,6 @@ class Row(Gtk.ListBoxRow):
             custom_mapping.clear(key)
 
         self.character_input.set_text('')
-        self.keycode_input.get_child().set_label('')
+        self.set_keycode_input_label('')
         self.key = None
         self.delete_callback(self)

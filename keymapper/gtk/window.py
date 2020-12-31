@@ -343,15 +343,24 @@ class Window:
     @with_selected_device
     def consume_newest_keycode(self):
         """To capture events from keyboards, mice and gamepads."""
+        row, focused = self.get_focused_row()
+
         # the "event" event of Gtk.Window wouldn't trigger on gamepad
         # events, so it became a GLib timeout to periodically check kernel
         # events.
         key = keycode_reader.read()
 
+        if isinstance(focused, Gtk.ToggleButton):
+            if not keycode_reader.are_keys_pressed():
+                # TODO test
+                row.release()
+                return True
+
         if key is None:
             return True
 
-        self.get('keycode').set_text(to_string(key))
+        # only show the latest key, becomes too long otherwise
+        self.get('keycode').set_text(to_string(key).split('+')[-1].strip())
 
         # inform the currently selected row about the new keycode
         row, focused = self.get_focused_row()
@@ -381,6 +390,9 @@ class Window:
 
         if context_id == CTX_WARNING:
             self.get('warning_status_icon').show()
+
+        if len(message) > 40:
+            message = message[:37] + '...'
 
         status_bar = self.get('status_bar')
         status_bar.push(context_id, message)

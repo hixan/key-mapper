@@ -192,6 +192,11 @@ class _KeycodeReader:
                     )
                     del rlist[fd]
 
+    def are_keys_pressed(self):
+        """Check if any keys currently pressed down."""
+        # TODO test
+        return len(self._unreleased) > 0
+
     def read(self):
         """Get the newest tuple of event type, keycode or None.
 

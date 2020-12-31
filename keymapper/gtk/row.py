@@ -23,7 +23,6 @@
 
 
 import evdev
-
 from gi.repository import Gtk, GLib, Gdk
 
 from keymapper.state import custom_mapping, system_mapping
@@ -73,6 +72,10 @@ def to_string(key):
         return 'unknown'
 
 
+IDLE = 0
+HOLDING = 1
+
+
 class Row(Gtk.ListBoxRow):
     """A single, configurable key mapping."""
     __gtype_name__ = 'ListBoxRow'
@@ -97,6 +100,18 @@ class Row(Gtk.ListBoxRow):
 
         self.put_together(character)
 
+        self.state = IDLE
+
+    def release(self):
+        """Tell the row that no keys are currently pressed down."""
+        # TODO test
+        if self.state == HOLDING:
+            # A key was pressed and then released.
+            # Switch to the character. idle_add this so that the
+            # keycode event won't write into the character input as well.
+            window = self.window.window
+            GLib.idle_add(lambda: window.set_focus(self.character_input))
+
     def get_keycode(self):
         """Get a tuple of type, code and value from the left column.
 
@@ -119,6 +134,9 @@ class Row(Gtk.ListBoxRow):
         if new_key is None:
             return
 
+        # it might end up being a key combination
+        self.state = HOLDING
+
         # keycode didn't change, do nothing
         if new_key == previous_key:
             return
@@ -128,19 +146,18 @@ class Row(Gtk.ListBoxRow):
         if existing is not None:
             msg = f'"{to_string(new_key)}" already mapped to "{existing}"'
             logger.info(msg)
-            self.window.get('status_bar').push(CTX_KEYCODE, msg)
+            self.window.show_status(CTX_KEYCODE, msg)
             return
 
         # it's legal to display the keycode
         self.window.get('status_bar').remove_all(CTX_KEYCODE)
-        self.keycode_input.set_label(to_string(new_key))
+
+        # always ask for get_child to set the label, otherwise line breaking
+        # has to be configured again.
+        self.keycode_input.get_child().set_label(to_string(new_key))
+
         self.key = new_key
-        # switch to the character, don't require mouse input because
-        # that would overwrite the key with the mouse-button key if
-        # the current device is a mouse. idle_add this so that the
-        # keycode event won't write into the character input as well.
-        window = self.window.window
-        # GLib.idle_add(lambda: window.set_focus(self.character_input))
+
         self.highlight()
 
         character = self.get_character()
@@ -191,7 +208,7 @@ class Row(Gtk.ListBoxRow):
         if self.get_keycode() is not None:
             return
 
-        self.keycode_input.set_label('click here')
+        self.keycode_input.get_child().set_label('click here')
         self.keycode_input.set_opacity(0.3)
 
     def show_press_key(self):
@@ -199,7 +216,7 @@ class Row(Gtk.ListBoxRow):
         if self.get_keycode() is not None:
             return
 
-        self.keycode_input.set_label('press key')
+        self.keycode_input.get_child().set_label('press key')
         self.keycode_input.set_opacity(1)
 
     def keycode_input_focus(self, *args):
@@ -211,6 +228,8 @@ class Row(Gtk.ListBoxRow):
         """Refresh useful usage information."""
         self.show_click_here()
         self.keycode_input.set_active(False)
+        # TODO test
+        self.state = IDLE
 
     def put_together(self, character):
         """Create all child GTK widgets and connect their signals."""
@@ -227,10 +246,15 @@ class Row(Gtk.ListBoxRow):
 
         keycode_input = Gtk.ToggleButton()
         self.keycode_input = keycode_input
+        keycode_input.set_label('')  # create the child widget
         keycode_input.set_size_request(140, -1)
+        keycode_input.get_child().set_line_wrap(True)
+        keycode_input.get_child().set_line_wrap_mode(2)
+        keycode_input.get_child().set_max_width_chars(15)
+        keycode_input.get_child().set_justify(Gtk.Justification.CENTER)
 
         if self.key is not None:
-            keycode_input.set_label(to_string(self.key))
+            keycode_input.get_child().set_label(to_string(self.key))
         else:
             self.show_click_here()
 
@@ -289,6 +313,6 @@ class Row(Gtk.ListBoxRow):
             custom_mapping.clear(key)
 
         self.character_input.set_text('')
-        self.keycode_input.set_label('')
+        self.keycode_input.get_child().set_label('')
         self.key = None
         self.delete_callback(self)

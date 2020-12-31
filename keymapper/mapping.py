@@ -24,6 +24,7 @@
 
 import os
 import json
+import itertools
 import copy
 
 from keymapper.logger import logger
@@ -275,5 +276,17 @@ class Mapping(ConfigBase):
                 event types.
             value : int
                 event value. Usually you want 1 (down)
+
+            Or a tuple of multiple of those. Checks any possible permutation
+            with the last key being always at the end, to work well with
+            combinations.
         """
+        # TODO test
+        if isinstance(key[0], tuple):
+            for permutation in itertools.permutations(key[:-1]):
+                permutation += (key[-1],)
+                existing = self._mapping.get(permutation)
+                if existing is not None:
+                    return existing
+
         return self._mapping.get(key)

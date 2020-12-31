@@ -30,6 +30,7 @@ requests.
 - [ ] automatically load presets when devices get plugged in after login (udev)
 - [ ] configure locale for preset to provide a different set of possible keys
 - [ ] user-friendly way to map btn_left
+- [ ] add "disable" as mapping option
 
 ## Tests
 

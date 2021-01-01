@@ -447,6 +447,14 @@ class KeycodeInjector:
         )
 
         async for event in source.async_read_loop():
+            if should_map_event_as_btn(source, event, self.mapping):
+                handle_keycode(
+                    self._key_to_code,
+                    macros,
+                    event,
+                    uinput
+                )
+
             if abs_to_rel and event.type == EV_ABS and event.code in JOYSTICK:
                 if event.code == evdev.ecodes.ABS_X:
                     self.abs_state[0] = event.value
@@ -456,15 +464,6 @@ class KeycodeInjector:
                     self.abs_state[2] = event.value
                 elif event.code == evdev.ecodes.ABS_RY:
                     self.abs_state[3] = event.value
-                continue
-
-            if should_map_event_as_btn(event.type, event.code):
-                handle_keycode(
-                    self._key_to_code,
-                    macros,
-                    event,
-                    uinput
-                )
                 continue
 
             # forward the rest

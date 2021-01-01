@@ -24,12 +24,15 @@
 
 import itertools
 import asyncio
+import math
 
-from evdev.ecodes import EV_KEY, EV_ABS
+import evdev
+from evdev.ecodes import EV_KEY, EV_ABS, ABS_X, ABS_Y, ABS_RX, ABS_RY
 
 from keymapper.logger import logger, is_debug
 from keymapper.util import sign
 from keymapper.mapping import DISABLE_CODE
+from keymapper.config import BUTTONS
 from keymapper.dev.ev_abs_mapper import JOYSTICK
 
 
@@ -55,26 +58,53 @@ active_macros = {}
 unreleased = {}
 
 
-def should_map_event_as_btn(ev_type, code):
+# a third of a quarter circle
+JOYSTICK_BUTTON_THRESHOLD = math.sin((math.pi / 2) / 3 * 1)
+
+
+def max_abs(device):
+    # TODO unittest, docstring
+    absinfos = [
+        entry[1] for entry in
+        device.capabilities(absinfo=True)[EV_ABS]
+        if isinstance(entry, tuple) and isinstance(entry[1], evdev.AbsInfo)
+    ]
+
+    if len(absinfos) == 0:
+        return
+
+    return absinfos[0].max
+
+
+def should_map_event_as_btn(device, event, mapping):
     """Does this event describe a button.
 
     Especially important for gamepad events, some of the buttons
-    require special rules.
-
-    Parameters
-    ----------
-    ev_type : int
-        one of evdev.events
-    code : int
-        linux keycode
+    require special rules. Will also modify the value of joystick events
+    to prepare it for a key mapping.
     """
-    if ev_type == EV_KEY:
-        return True
+    if event.type == EV_ABS and event.code in JOYSTICK:
+        # TODO test
+        l_purpose = mapping.get('gamepad.joystick.left_purpose')
+        r_purpose = mapping.get('gamepad.joystick.right_purpose')
+        threshold = max_abs(device) * JOYSTICK_BUTTON_THRESHOLD
+        triggered = abs(event.value) > threshold
 
-    if ev_type == EV_ABS:
-        is_mousepad = 47 <= code <= 61
-        if not is_mousepad and code not in JOYSTICK:
+        if event.code in [ABS_X, ABS_Y] and l_purpose == BUTTONS:
+            event.value = sign(event.value) if triggered else 0
             return True
+
+        if event.code in [ABS_RX, ABS_RY] and r_purpose == BUTTONS:
+            event.value = sign(event.value) if triggered else 0
+            return True
+    else:
+        if event.type == EV_KEY:
+            return True
+
+        if event.type == EV_ABS:
+            is_mousepad = 47 <= event.code <= 61
+            if not is_mousepad and event.code not in JOYSTICK:
+                return True
 
     return False
 
@@ -217,8 +247,9 @@ def handle_keycode(key_to_code, macros, event, uinput):
             else:
                 log(key, 'releasing %s', target_code)
                 write(uinput, (target_type, target_code, 0))
-        else:
-            # disabled keys can still be used in combinations btw
+        elif event.type != EV_ABS:
+            # ABS events might be spammed like crazy every time the position
+            # slightly changes
             log(key, 'unexpected key up')
 
         # everything that can be released is released now

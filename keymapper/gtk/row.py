@@ -115,7 +115,8 @@ class Row(Gtk.ListBoxRow):
 
     def release(self):
         """Tell the row that no keys are currently pressed down."""
-        if self.state == HOLDING:
+        if self.state == HOLDING and self.get_key() is not None:
+            # TODO test "self.get_key() is not None"
             # A key was pressed and then released.
             # Switch to the character. idle_add this so that the
             # keycode event won't write into the character input as well.

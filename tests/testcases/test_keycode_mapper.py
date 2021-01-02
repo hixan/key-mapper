@@ -155,6 +155,20 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(uinput_write_history[6].t, (EV_KEY, 52, 0))
         self.assertEqual(uinput_write_history[7].t, (EV_KEY, 55, 0))
 
+    def test_not_forward(self):
+        down = (EV_KEY, 91, 1)
+        up = (EV_KEY, 91, 0)
+        uinput = UInput()
+
+        handle_keycode({}, {}, new_event(*down), uinput, False)
+        self.assertEqual(unreleased[(EV_KEY, 91)], (down[:2], down))
+        self.assertEqual(len(unreleased), 1)
+        self.assertEqual(uinput.write_count, 0)
+
+        handle_keycode({}, {}, new_event(*up), uinput, False)
+        self.assertEqual(len(unreleased), 0)
+        self.assertEqual(uinput.write_count, 0)
+
     def test_d_pad_combination(self):
         ev_1 = (EV_ABS, ABS_HAT0X, 1)
         ev_2 = (EV_ABS, ABS_HAT0Y, -1)

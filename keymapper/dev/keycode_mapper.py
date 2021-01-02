@@ -40,7 +40,9 @@ from keymapper.mapping import DISABLE_CODE
 # once, one for each direction. Only sequentially.
 active_macros = {}
 
-# mapping of future up event (type, code) to (output code, input event)
+# mapping of future up event (type, code) to (output, input event),
+# with output being a tuple of (type, code) as  well. All key-up events
+# have a value of 0, so it is not added to the tuple.
 # This is needed in order to release the correct event mapped on a
 # D-Pad. Each direction on one D-Pad axis reports the same type and
 # code, but different values. There cannot be both at the same time,
@@ -186,7 +188,7 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
                 logger.key_spam(key, 'forwarding release')
                 write(uinput, (target_type, target_code, 0))
             else:
-                logger.key_spam(key, 'discarded release')
+                logger.key_spam(key, 'not forwarding release')
         elif event.type != EV_ABS:
             # ABS events might be spammed like crazy every time the position
             # slightly changes
@@ -240,8 +242,11 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
             write(uinput, (EV_KEY, target_code, 1))
             return
 
-        logger.key_spam(key, 'forwarding')
-        write(uinput, event_tuple)
+        if forward:
+            logger.key_spam(key, 'forwarding')
+            write(uinput, event_tuple)
+        else:
+            logger.key_spam(key, 'not forwarding')
 
         # unhandled events may still be important for triggering combinations
         # later, so remember them as well.

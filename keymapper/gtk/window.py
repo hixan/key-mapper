@@ -361,7 +361,7 @@ class Window:
         if key is None:
             return True
 
-        if key.is_problematic():
+        if key.is_problematic() and isinstance(focused, Gtk.ToggleButton):
             self.show_status(
                 CTX_WARNING,
                 'ctrl, alt and shift may not combine properly',

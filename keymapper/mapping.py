@@ -247,14 +247,6 @@ class Mapping(ConfigBase):
             If an InputEvent, will test if that event is mapped
             and take the sign of the value.
         """
-        if isinstance(key, evdev.InputEvent):
-            # TODO remove this shit
-            if key.type == evdev.ecodes.EV_ABS:
-                value = utils.sign(key.value)
-            else:
-                value = key.value
-            key = Key((key.type, key.code, value))
-
         if not isinstance(key, Key):
             raise TypeError('Expected key to be a Key object')
 

@@ -92,18 +92,10 @@ class EventProducer:
             logger.error('OverflowError (%s, %s, %s)', ev_type, keycode, value)
             pass
 
-    def debounce(self, key, uinput, ticks):
-        """Avoids writing duplicate events.
-        Parameters
-        ----------
-        key : int, int, int
-            type, code, value
-        uinput : UInput
-        ticks : int
-            how many loops have to pass without debounce for the key being
-            called again until is is written.
-        """
-        self.debounces[key] = (uinput, ticks)
+    def debounce(self, id, func, args, ticks):
+        """Debounce a function call."""
+        # TODO test
+        self.debounces[id] = [func, args, ticks]
 
     def accumulate(self, code, input_value):
         """Since devices can't do float values, stuff has to be accumulated.
@@ -199,13 +191,13 @@ class EventProducer:
 
             """handling debounces"""
 
-            for key, debounce in self.debounces.items():
+            for debounce in self.debounces.values():
                 # TODO test
-                if debounce[1] == 0:
-                    self._write(debounce[0], *key)
-                    debounce[0] = -1
+                if debounce[2] == 0:
+                    debounce[0](*debounce[1])
+                    debounce[2] = -1
                 else:
-                    debounce[1] -= 1
+                    debounce[2] -= 1
 
             """mouse movement production"""
 

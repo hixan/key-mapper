@@ -459,13 +459,30 @@ class KeycodeInjector:
 
         async for event in source.async_read_loop():
             self._event_producer.notify(event)
-
             if utils.should_map_event_as_btn(source, event, self.mapping):
                 handle_keycode(
                     self._key_to_code,
                     macros,
                     event,
                     uinput
+                )
+
+                if not utils.is_wheel(event):
+                    # if not up event needs to be simulated, the iteration
+                    # is done at this point.
+                    continue
+
+                # TODO test
+                self._event_producer.debounce(
+                    id=(event.type, event.code, event.value),
+                    func=handle_keycode,
+                    args=(
+                        self._key_to_code,
+                        macros,
+                        evdev.InputEvent(0, 0, event.type, event.code, 0),
+                        uinput
+                    ),
+                    ticks=3
                 )
                 continue
 

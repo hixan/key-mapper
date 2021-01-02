@@ -30,6 +30,8 @@ import pkg_resources
 
 SPAM = 5
 
+start = time.time()
+
 
 def spam(self, message, *args, **kwargs):
     """Log a more-verbose message than debug."""
@@ -75,13 +77,14 @@ class Formatter(logging.Formatter):
                 pid = f'pid {os.getpid()}, '
 
             if debug:
+                delta = f' {str(time.time() - start)[:7]}, '
                 self._style._fmt = (  # noqa
                     '\033[1m'  # bold
                     f'\033[{color}m'  # color
                     f'%(levelname)s'
                     '\033[0m'  # end style
                     f'\033[{color}m'  # color
-                    f': {pid}%(filename)s, line %(lineno)d, %(message)s'
+                    f':{delta}{pid}%(filename)s, line %(lineno)d, %(message)s'
                     '\033[0m'  # end style
                 )
             else:

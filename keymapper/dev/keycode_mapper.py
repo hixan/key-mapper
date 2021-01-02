@@ -216,7 +216,7 @@ def handle_keycode(key_to_code, macros, event, uinput):
         if key in key_to_code and type_code in unreleased:
             # duplicate key-down. skip this event. Avoid writing millions of
             # key-down events when a continuous value is reported, for example
-            # for gamepad triggers
+            # for gamepad triggers or mouse-wheel-side buttons
             log(key, 'duplicate key down')
             return
 

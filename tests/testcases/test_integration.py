@@ -363,6 +363,7 @@ class TestIntegration(unittest.TestCase):
                 self.assertIn('changed', css_classes)
                 self.assertEqual(row.keycode_input.get_label(), to_string(key))
                 self.assertFalse(row.keycode_input.is_focus())
+                self.assertEqual(len(keycode_reader._unreleased), 0)
 
         if not expect_success:
             self.assertIsNone(row.get_key())

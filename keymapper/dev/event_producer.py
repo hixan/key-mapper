@@ -37,9 +37,6 @@ from keymapper.dev import utils
 WHEEL_THRESHOLD = 0.15
 
 
-# TODO rename file
-
-
 def abs_max(value_1, value_2):
     """Get the value with the higher abs value."""
     if abs(value_1) > abs(value_2):
@@ -65,13 +62,14 @@ class EventProducer:
         """
         self.mapping = mapping
         self.mouse_uinput = None
-        self.key_uinput = None
         self.max_abs = None
         # events only take ints, so a movement of 0.3 needs to add
         # up to 1.2 to affect the cursor, with 0.2 remaining
         self.pending_rel = {REL_X: 0, REL_Y: 0, REL_WHEEL: 0, REL_HWHEEL: 0}
         # the last known position of the joystick
         self.abs_state = {ABS_X: 0, ABS_Y: 0, ABS_RX: 0, ABS_RY: 0}
+
+        self.debounces = {}
 
     def notify(self, event):
         """Tell the EventProducer about the newest ABS event.
@@ -94,6 +92,19 @@ class EventProducer:
             logger.error('OverflowError (%s, %s, %s)', ev_type, keycode, value)
             pass
 
+    def debounce(self, key, uinput, ticks):
+        """Avoids writing duplicate events.
+        Parameters
+        ----------
+        key : int, int, int
+            type, code, value
+        uinput : UInput
+        ticks : int
+            how many loops have to pass without debounce for the key being
+            called again until is is written.
+        """
+        self.debounces[key] = (uinput, ticks)
+
     def accumulate(self, code, input_value):
         """Since devices can't do float values, stuff has to be accumulated.
 
@@ -110,10 +121,6 @@ class EventProducer:
         """Set where to write mouse movements to."""
         logger.debug('Going to inject mouse movements to "%s"', uinput.name)
         self.mouse_uinput = uinput
-
-    def set_key_uinput(self, uinput):
-        """Where to write keycodes to."""
-        self.key_uinput = uinput
 
     def set_max_abs_from(self, device):
         """Update the maximum value joysticks will report.
@@ -192,7 +199,13 @@ class EventProducer:
 
             """handling debounces"""
 
-            # TODO
+            for key, debounce in self.debounces.items():
+                # TODO test
+                if debounce[1] == 0:
+                    self._write(debounce[0], *key)
+                    debounce[0] = -1
+                else:
+                    debounce[1] -= 1
 
             """mouse movement production"""
 

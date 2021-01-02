@@ -27,7 +27,7 @@ from evdev.ecodes import EV_REL, REL_X, REL_Y, REL_WHEEL, REL_HWHEEL, \
 
 from keymapper.config import config
 from keymapper.mapping import Mapping
-from keymapper.dev.ev_abs_mapper import EventProducer, MOUSE, WHEEL
+from keymapper.dev.event_producer import EventProducer, MOUSE, WHEEL
 
 from tests.test import InputDevice, UInput, MAX_ABS, clear_write_history, \
     uinput_write_history, cleanup, InputEvent
@@ -56,6 +56,9 @@ class TestEvAbsMapper(unittest.TestCase):
 
     def tearDown(self):
         cleanup()
+
+    def test_debounce(self):
+        pass
 
     def do(self, a, b, c, d, expectation):
         """Present fake values to the loop and observe the outcome."""

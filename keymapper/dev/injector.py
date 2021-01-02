@@ -35,7 +35,7 @@ from keymapper.logger import logger
 from keymapper.getdevices import get_devices, map_abs_to_rel
 from keymapper.dev.keycode_mapper import handle_keycode
 from keymapper.dev import utils
-from keymapper.dev.ev_abs_mapper import EventProducer
+from keymapper.dev.event_producer import EventProducer
 from keymapper.dev.macros import parse, is_this_a_macro
 from keymapper.state import system_mapping
 from keymapper.mapping import DISABLE_CODE
@@ -329,7 +329,7 @@ class KeycodeInjector:
         the loops needed to read and map events and keeps running them.
         """
         # create a new event loop, because somehow running an infinite loop
-        # that sleeps on iterations (ev_abs_mapper) in one process causes
+        # that sleeps on iterations (event_producer) in one process causes
         # another injection process to screw up reading from the grabbed
         # device.
         loop = asyncio.new_event_loop()
@@ -436,7 +436,7 @@ class KeycodeInjector:
         uinput.syn()
 
     async def _event_consumer(self, macros, source, uinput):
-        """Reads input events to inject keycodes or talk to the ev_abs_mapper.
+        """Reads input events to inject keycodes or talk to the event_producer.
 
         Can be stopped by stopping the asyncio loop. This loop
         reads events from a single device only. Other devnodes may be

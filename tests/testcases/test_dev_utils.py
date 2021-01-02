@@ -51,10 +51,10 @@ class TestDevUtils(unittest.TestCase):
 
         """Mouse movements"""
 
-        self.assertFalse(do(device, InputEvent(EV_REL, REL_WHEEL, 1), mapping))
-        self.assertFalse(do(device, InputEvent(EV_REL, REL_WHEEL, -1), mapping))
-        self.assertFalse(do(device, InputEvent(EV_REL, REL_HWHEEL, 1), mapping))
-        self.assertFalse(do(device, InputEvent(EV_REL, REL_HWHEEL, -1), mapping))
+        self.assertTrue(do(device, InputEvent(EV_REL, REL_WHEEL, 1), mapping))
+        self.assertTrue(do(device, InputEvent(EV_REL, REL_WHEEL, -1), mapping))
+        self.assertTrue(do(device, InputEvent(EV_REL, REL_HWHEEL, 1), mapping))
+        self.assertTrue(do(device, InputEvent(EV_REL, REL_HWHEEL, -1), mapping))
         self.assertFalse(do(device, InputEvent(EV_REL, REL_X, -1), mapping))
 
         """regular keys and buttons"""

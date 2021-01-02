@@ -62,6 +62,12 @@ def is_wheel(event):
     return event.type == EV_REL and event.code in [REL_WHEEL, REL_HWHEEL]
 
 
+def will_report_key_up(event):
+    # TODO unittest
+    """Check if the key is expected to report a down event as well."""
+    return not is_wheel(event)
+
+
 def should_map_event_as_btn(device, event, mapping):
     """Does this event describe a button.
 

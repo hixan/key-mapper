@@ -166,7 +166,7 @@ class TestDaemon(unittest.TestCase):
         try:
             self.assertFalse(uinput_write_history_pipe[0].poll())
         except AssertionError:
-            print(uinput_write_history_pipe[0].recv())
+            print('Unexpected', uinput_write_history_pipe[0].recv())
             raise
 
         """injection 2"""

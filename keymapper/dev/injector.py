@@ -453,7 +453,7 @@ class KeycodeInjector:
             where to write keycodes to
         """
         logger.debug(
-            'Started injecting into %s, fd %s',
+            'Started consumer to inject to %s, fd %s',
             uinput.device.path, uinput.fd
         )
 
@@ -467,23 +467,22 @@ class KeycodeInjector:
                     uinput
                 )
 
-                if not utils.is_wheel(event):
-                    # if not up event needs to be simulated, the iteration
-                    # is done at this point.
-                    continue
+                if not utils.will_report_key_up(event):
+                    # simulate a key-up event if no down event arrives anymore
+                    # TODO test
+                    self._event_producer.debounce(
+                        id=(event.type, event.code, event.value),
+                        func=handle_keycode,
+                        args=(
+                            self._key_to_code,
+                            macros,
+                            # use 0 as the value to simulate key-up
+                            evdev.InputEvent(0, 0, event.type, event.code, 0),
+                            uinput
+                        ),
+                        ticks=3
+                    )
 
-                # TODO test
-                self._event_producer.debounce(
-                    id=(event.type, event.code, event.value),
-                    func=handle_keycode,
-                    args=(
-                        self._key_to_code,
-                        macros,
-                        evdev.InputEvent(0, 0, event.type, event.code, 0),
-                        uinput
-                    ),
-                    ticks=3
-                )
                 continue
 
             if self._event_producer.is_handled(event):
@@ -495,7 +494,7 @@ class KeycodeInjector:
             # this already includes SYN events, so need to syn here again
 
         logger.error(
-            'The injector for "%s" stopped early',
+            'The consumer for "%s" stopped early',
             uinput.device.path
         )
 

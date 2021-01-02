@@ -167,6 +167,7 @@ class TestDaemon(unittest.TestCase):
             self.assertFalse(uinput_write_history_pipe[0].poll())
         except AssertionError:
             print('Unexpected', uinput_write_history_pipe[0].recv())
+            # possibly a duplicate write!
             raise
 
         """injection 2"""
@@ -180,7 +181,7 @@ class TestDaemon(unittest.TestCase):
         self.daemon.start_injecting(device, path)
 
         # the written key is a key-down event, not the original
-        # event value of -5678
+        # event value of -1234
         event = uinput_write_history_pipe[0].recv()
         self.assertEqual(event.type, EV_KEY)
         self.assertEqual(event.code, keycode_to_2)

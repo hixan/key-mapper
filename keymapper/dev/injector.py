@@ -454,39 +454,42 @@ class KeycodeInjector:
         """
         logger.debug(
             'Started consumer to inject to %s, fd %s',
-            uinput.device.path, uinput.fd
+            source.path, source.fd
         )
 
         async for event in source.async_read_loop():
-            self._event_producer.notify(event)
+            if self._event_producer.is_handled(event):
+                # the event_producer will take care of it
+                self._event_producer.notify(event)
+                continue
+
+            # for mapped stuff
             if utils.should_map_event_as_btn(source, event, self.mapping):
+                will_report_key_up = utils.will_report_key_up(event)
+
                 handle_keycode(
                     self._key_to_code,
                     macros,
                     event,
-                    uinput
+                    uinput,
                 )
 
-                if not utils.will_report_key_up(event):
-                    # simulate a key-up event if no down event arrives anymore
-                    # TODO test
+                if not will_report_key_up:
+                    # simulate a key-up event if no down event arrives anymore.
+                    # this may release macros, combinations or keycodes.
+                    release = evdev.InputEvent(0, 0, event.type, event.code, 0)
                     self._event_producer.debounce(
-                        id=(event.type, event.code, event.value),
+                        debounce_id=(event.type, event.code, event.value),
                         func=handle_keycode,
                         args=(
-                            self._key_to_code,
-                            macros,
-                            # use 0 as the value to simulate key-up
-                            evdev.InputEvent(0, 0, event.type, event.code, 0),
-                            uinput
+                            self._key_to_code, macros,
+                            release,
+                            uinput,
+                            False
                         ),
-                        ticks=3
+                        ticks=3,
                     )
 
-                continue
-
-            if self._event_producer.is_handled(event):
-                # the event_producer will take care of it
                 continue
 
             # forward the rest
@@ -495,7 +498,7 @@ class KeycodeInjector:
 
         logger.error(
             'The consumer for "%s" stopped early',
-            uinput.device.path
+            source.path
         )
 
     @ensure_numlock

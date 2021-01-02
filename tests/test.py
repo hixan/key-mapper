@@ -89,28 +89,35 @@ info_1 = 'bus: 0001, vendor 0001, product 0001, version 0001'
 fixtures = {
     # device 1
     '/dev/input/event11': {
-        'capabilities': {evdev.ecodes.EV_KEY: [], evdev.ecodes.EV_REL: []},
+        'capabilities': {evdev.ecodes.EV_KEY: [], evdev.ecodes.EV_REL: [
+            evdev.ecodes.REL_WHEEL,
+            evdev.ecodes.REL_HWHEEL
+        ]},
         'phys': f'{phys_1}/input2',
         'info': info_1,
-        'name': 'device 1 foo'
+        'name': 'device 1 foo',
+        'group': 'device 1'
     },
     '/dev/input/event10': {
         'capabilities': {evdev.ecodes.EV_KEY: list(evdev.ecodes.keys.keys())},
         'phys': f'{phys_1}/input3',
         'info': info_1,
-        'name': 'device 1'
+        'name': 'device 1',
+        'group': 'device 1'
     },
     '/dev/input/event13': {
         'capabilities': {evdev.ecodes.EV_KEY: [], evdev.ecodes.EV_SYN: []},
         'phys': f'{phys_1}/input1',
         'info': info_1,
-        'name': 'device 1'
+        'name': 'device 1',
+        'group': 'device 1'
     },
     '/dev/input/event14': {
         'capabilities': {evdev.ecodes.EV_SYN: []},
         'phys': f'{phys_1}/input0',
         'info': info_1,
-        'name': 'device 1 qux'
+        'name': 'device 1 qux',
+        'group': 'device 1'
     },
 
     # device 2
@@ -231,15 +238,20 @@ class InputDevice:
             raise FileNotFoundError()
 
         self.path = path
-        self.phys = fixtures.get(path, {}).get('phys', 'unset')
-        self.info = fixtures.get(path, {}).get('info', 'unset')
-        self.name = fixtures.get(path, {}).get('name', 'unset')
+        fixture = fixtures.get(path, {})
+        self.phys = fixture.get('phys', 'unset')
+        self.info = fixture.get('info', 'unset')
+        self.name = fixture.get('name', 'unset')
         self.fd = self.name
+
+        # properties that exists for test purposes and are not part of
+        # the original object
+        self.group = fixture.get('group', self.name)
 
     def log(self, key, msg):
         print(
             f'\033[90m'  # color
-            f'{msg} "{self.name}" "{self.phys}" {key}'
+            f'{msg} "{self.name}" "{self.path}" {key}'
             '\033[0m'  # end style
         )
 
@@ -250,42 +262,45 @@ class InputDevice:
         pass
 
     def read(self):
-        ret = pending_events.get(self.name, [])
+        # the patched fake InputDevice objects read anything pending from
+        # that group, to be realistic it would have to check if the provided
+        # element is in its capabilities.
+        ret = pending_events.get(self.group, [])
         if ret is not None:
             # consume all of them
-            pending_events[self.name] = []
+            pending_events[self.group] = []
 
         return ret
 
     def read_one(self):
-        if pending_events.get(self.name) is None:
+        if pending_events.get(self.group) is None:
             return None
 
-        if len(pending_events[self.name]) == 0:
+        if len(pending_events[self.group]) == 0:
             return None
 
-        event = pending_events[self.name].pop(0)
+        event = pending_events[self.group].pop(0)
         self.log(event, 'read_one')
         return event
 
     def read_loop(self):
         """Read all prepared events at once."""
-        if pending_events.get(self.name) is None:
+        if pending_events.get(self.group) is None:
             return
 
-        while len(pending_events[self.name]) > 0:
-            result = pending_events[self.name].pop(0)
+        while len(pending_events[self.group]) > 0:
+            result = pending_events[self.group].pop(0)
             self.log(result, 'read_loop')
             yield result
             time.sleep(EVENT_READ_TIMEOUT)
 
     async def async_read_loop(self):
         """Read all prepared events at once."""
-        if pending_events.get(self.name) is None:
+        if pending_events.get(self.group) is None:
             return
 
-        while len(pending_events[self.name]) > 0:
-            result = pending_events[self.name].pop(0)
+        while len(pending_events[self.group]) > 0:
+            result = pending_events[self.group].pop(0)
             self.log(result, 'async_read_loop')
             yield result
             await asyncio.sleep(0.01)
@@ -311,16 +326,22 @@ class UInput:
         self.write_count = 0
         self.device = InputDevice('justdoit')
         self.name = name
+        self.events = events
         pass
 
     def capabilities(self, *args, **kwargs):
-        return []
+        return self.events
 
     def write(self, type, code, value):
         self.write_count += 1
         event = new_event(type, code, value)
         uinput_write_history.append(event)
         uinput_write_history_pipe[1].send(event)
+        print(
+            f'\033[90m'  # color
+            f'{(type, code, value)} written'
+            '\033[0m'  # end style
+        )
 
     def syn(self):
         pass
@@ -388,6 +409,11 @@ _fixture_copy = copy.deepcopy(fixtures)
 
 def cleanup():
     """Reset the applications state."""
+    print(
+        f'\033[90m'  # color
+        f'cleanup'
+        '\033[0m'  # end style
+    )
     keycode_reader.stop_reading()
     keycode_reader.clear()
     keycode_reader.newest_event = None

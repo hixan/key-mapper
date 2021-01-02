@@ -26,10 +26,13 @@ import os
 import json
 import copy
 
+import evdev
+
 from keymapper.logger import logger
 from keymapper.paths import touch
 from keymapper.config import ConfigBase, config
 from keymapper.key import Key
+from keymapper.dev import utils
 
 
 DISABLE_NAME = 'disable'
@@ -240,8 +243,18 @@ class Mapping(ConfigBase):
 
         Parameters
         ----------
-        key : Key
+        key : Key or InputEvent
+            If an InputEvent, will test if that event is mapped
+            and take the sign of the value.
         """
+        if isinstance(key, evdev.InputEvent):
+            # TODO remove this shit
+            if key.type == evdev.ecodes.EV_ABS:
+                value = utils.sign(key.value)
+            else:
+                value = key.value
+            key = Key((key.type, key.code, value))
+
         if not isinstance(key, Key):
             raise TypeError('Expected key to be a Key object')
 

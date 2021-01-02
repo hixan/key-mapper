@@ -22,6 +22,7 @@
 import os
 import unittest
 import json
+
 from evdev.ecodes import EV_KEY, EV_ABS, ABS_HAT0X, KEY_A
 
 from keymapper.mapping import Mapping
@@ -30,7 +31,7 @@ from keymapper.config import config
 from keymapper.paths import get_preset_path
 from keymapper.key import Key
 
-from tests.test import tmp, cleanup
+from tests.test import tmp, cleanup, new_event
 
 
 class TestSystemMapping(unittest.TestCase):
@@ -230,6 +231,16 @@ class TestMapping(unittest.TestCase):
             (EV_ABS, 2, -1),
             Key(EV_ABS, 3, 1))
         ), 'c')
+
+    def test_query_by_event(self):
+        self.mapping.change(Key(EV_ABS, 1, 1), 'a')
+        self.mapping.change(Key(EV_KEY, 2, 1), 'b')
+        event = new_event(EV_ABS, 1, 1234)
+        self.assertEqual(self.mapping.get_character(event), 'a')
+        event = new_event(EV_KEY, 2, 1)
+        self.assertEqual(self.mapping.get_character(event), 'b')
+        event = new_event(EV_KEY, 2, 1234)
+        self.assertIsNone(self.mapping.get_character(event))
 
     def test_change(self):
         # the reader would not report values like 111 or 222, only 1 or -1.

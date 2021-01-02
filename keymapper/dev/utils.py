@@ -58,12 +58,10 @@ def sign(value):
 
 def is_wheel(event):
     """Check if this is a wheel event."""
-    # TODO unittest
     return event.type == EV_REL and event.code in [REL_WHEEL, REL_HWHEEL]
 
 
 def will_report_key_up(event):
-    # TODO unittest
     """Check if the key is expected to report a down event as well."""
     return not is_wheel(event)
 

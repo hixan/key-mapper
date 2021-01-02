@@ -92,10 +92,21 @@ class EventProducer:
             logger.error('OverflowError (%s, %s, %s)', ev_type, keycode, value)
             pass
 
-    def debounce(self, id, func, args, ticks):
-        """Debounce a function call."""
-        # TODO test
-        self.debounces[id] = [func, args, ticks]
+    def debounce(self, debounce_id, func, args, ticks):
+        """Debounce a function call.
+
+        Parameters
+        ----------
+        debounce_id : hashable
+            If this function is called with the same debounce_id again,
+            the previous debouncing is overwritten, and there fore restarted.
+        func : function
+        args : tuple
+        ticks : int
+            After ticks * 1 / 60 seconds the function will be executed,
+            unless debounce is called again with the same debounce_id
+        """
+        self.debounces[debounce_id] = [func, args, ticks]
 
     def accumulate(self, code, input_value):
         """Since devices can't do float values, stuff has to be accumulated.
@@ -192,7 +203,9 @@ class EventProducer:
             """handling debounces"""
 
             for debounce in self.debounces.values():
-                # TODO test
+                if debounce[2] == -1:
+                    # has already been triggered
+                    continue
                 if debounce[2] == 0:
                     debounce[0](*debounce[1])
                     debounce[2] = -1

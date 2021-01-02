@@ -36,7 +36,7 @@ from tests.test import InputDevice, UInput, MAX_ABS, clear_write_history, \
 abs_state = [0, 0, 0, 0]
 
 
-class TestEvAbsMapper(unittest.TestCase):
+class TestEventProducer(unittest.TestCase):
     # there is also `test_abs_to_rel` in test_injector.py
     def setUp(self):
         loop = asyncio.new_event_loop()
@@ -57,8 +57,58 @@ class TestEvAbsMapper(unittest.TestCase):
     def tearDown(self):
         cleanup()
 
-    def test_debounce(self):
-        pass
+    def test_debounce_1(self):
+        loop = asyncio.get_event_loop()
+        tick_time = 1 / 60
+        history = []
+
+        self.event_producer.debounce(1234, history.append, (1,), 10)
+        asyncio.ensure_future(self.event_producer.run())
+        loop.run_until_complete(asyncio.sleep(6 * tick_time))
+        self.assertEqual(len(history), 0)
+        loop.run_until_complete(asyncio.sleep(6 * tick_time))
+        self.assertEqual(len(history), 1)
+        # won't get called a second time
+        loop.run_until_complete(asyncio.sleep(11 * tick_time))
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0], 1)
+
+    def test_debounce_2(self):
+        loop = asyncio.get_event_loop()
+        tick_time = 1 / 60
+        history = []
+
+        self.event_producer.debounce(1234, history.append, (1,), 10)
+        asyncio.ensure_future(self.event_producer.run())
+        loop.run_until_complete(asyncio.sleep(6 * tick_time))
+        self.assertEqual(len(history), 0)
+        # replaces
+        self.event_producer.debounce(1234, history.append, (2,), 20)
+        loop.run_until_complete(asyncio.sleep(6 * tick_time))
+        self.assertEqual(len(history), 0)
+        loop.run_until_complete(asyncio.sleep(11 * tick_time))
+        self.assertEqual(len(history), 1)
+        # won't get called a second time
+        loop.run_until_complete(asyncio.sleep(21 * tick_time))
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0], 2)
+
+    def test_debounce_3(self):
+        loop = asyncio.get_event_loop()
+        tick_time = 1 / 60
+        history = []
+
+        self.event_producer.debounce(1234, history.append, (1,), 10)
+        self.event_producer.debounce(5678, history.append, (2,), 20)
+        asyncio.ensure_future(self.event_producer.run())
+        loop.run_until_complete(asyncio.sleep(11 * tick_time))
+        self.assertEqual(len(history), 1)
+        loop.run_until_complete(asyncio.sleep(11 * tick_time))
+        self.assertEqual(len(history), 2)
+        loop.run_until_complete(asyncio.sleep(21 * tick_time))
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[0], 1)
+        self.assertEqual(history[1], 2)
 
     def do(self, a, b, c, d, expectation):
         """Present fake values to the loop and observe the outcome."""

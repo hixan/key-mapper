@@ -22,15 +22,15 @@
 import unittest
 import asyncio
 
-from evdev.ecodes import EV_REL, REL_X, REL_Y, REL_WHEEL, REL_HWHEEL
+from evdev.ecodes import EV_REL, REL_X, REL_Y, REL_WHEEL, REL_HWHEEL, \
+    EV_ABS, ABS_X, ABS_Y, ABS_RX, ABS_RY
 
-from keymapper.dev.ev_abs_mapper import ev_abs_mapper
 from keymapper.config import config
 from keymapper.mapping import Mapping
-from keymapper.dev.ev_abs_mapper import MOUSE, WHEEL
+from keymapper.dev.ev_abs_mapper import EventProducer, MOUSE, WHEEL
 
 from tests.test import InputDevice, UInput, MAX_ABS, clear_write_history, \
-    uinput_write_history, cleanup
+    uinput_write_history, cleanup, InputEvent
 
 
 abs_state = [0, 0, 0, 0]
@@ -46,12 +46,10 @@ class TestEvAbsMapper(unittest.TestCase):
 
         device = InputDevice('/dev/input/event30')
         uinput = UInput()
-        asyncio.ensure_future(ev_abs_mapper(
-            abs_state,
-            device,
-            uinput,
-            self.mapping
-        ))
+        self.event_producer = EventProducer(self.mapping)
+        self.event_producer.set_max_abs_from(device)
+        self.event_producer.set_mouse_uinput(uinput)
+        asyncio.ensure_future(self.event_producer.run())
 
         config.set('gamepad.joystick.x_scroll_speed', 1)
         config.set('gamepad.joystick.y_scroll_speed', 1)
@@ -62,10 +60,10 @@ class TestEvAbsMapper(unittest.TestCase):
     def do(self, a, b, c, d, expectation):
         """Present fake values to the loop and observe the outcome."""
         clear_write_history()
-        abs_state[0] = a
-        abs_state[1] = b
-        abs_state[2] = c
-        abs_state[3] = d
+        self.event_producer.notify(InputEvent(EV_ABS, ABS_X, a))
+        self.event_producer.notify(InputEvent(EV_ABS, ABS_Y, b))
+        self.event_producer.notify(InputEvent(EV_ABS, ABS_RX, c))
+        self.event_producer.notify(InputEvent(EV_ABS, ABS_RY, d))
         # 3 frames
         loop = asyncio.get_event_loop()
         loop.run_until_complete(asyncio.sleep(3 / 60))

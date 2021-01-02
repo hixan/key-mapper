@@ -178,6 +178,8 @@ def push_event(device, event):
     pending_events[device].append(event)
 
 
+# TODO factory to set the time automatically instead, InputEvent doesn't
+#  need to be faked
 class InputEvent:
     """Event to put into the injector for tests.
 
@@ -330,10 +332,12 @@ class InputDevice:
 
 
 class UInput:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, events=None, name='unnamed', *args, **kwargs):
         self.fd = 0
         self.write_count = 0
+        # TODO v wut? v
         self.device = InputDevice('/dev/input/event40')
+        self.name = name
         pass
 
     def capabilities(self, *args, **kwargs):

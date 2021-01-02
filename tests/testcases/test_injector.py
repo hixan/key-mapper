@@ -24,7 +24,8 @@ import time
 import copy
 
 import evdev
-from evdev.ecodes import EV_REL, EV_KEY, EV_ABS, ABS_HAT0X, BTN_LEFT, KEY_A
+from evdev.ecodes import EV_REL, EV_KEY, EV_ABS, ABS_HAT0X, BTN_LEFT, KEY_A, \
+    REL_X, REL_Y
 
 from keymapper.dev.injector import is_numlock_on, set_numlock, \
     ensure_numlock, KeycodeInjector, is_in_capabilities
@@ -315,18 +316,15 @@ class TestInjector(unittest.TestCase):
         pointer_speed = 80
         config.set('gamepad.joystick.pointer_speed', pointer_speed)
 
-        rel_x = evdev.ecodes.REL_X
-        rel_y = evdev.ecodes.REL_Y
-
         # they need to sum up before something is written
         divisor = 10
         x = MAX_ABS / pointer_speed / divisor
         y = MAX_ABS / pointer_speed / divisor
         pending_events['gamepad'] = [
-            InputEvent(EV_ABS, rel_x, x),
-            InputEvent(EV_ABS, rel_y, y),
-            InputEvent(EV_ABS, rel_x, -x),
-            InputEvent(EV_ABS, rel_y, -y),
+            InputEvent(EV_ABS, REL_X, x),
+            InputEvent(EV_ABS, REL_Y, y),
+            InputEvent(EV_ABS, REL_X, -x),
+            InputEvent(EV_ABS, REL_Y, -y),
         ]
 
         self.injector = KeycodeInjector('gamepad', custom_mapping)
@@ -348,6 +346,7 @@ class TestInjector(unittest.TestCase):
         if history[0][0] == EV_ABS:
             raise AssertionError(
                 'The injector probably just forwarded them unchanged'
+                # possibly in addition to writing mouse events
             )
 
         # movement is written at 60hz and it takes `divisor` steps to
@@ -355,14 +354,13 @@ class TestInjector(unittest.TestCase):
         self.assertGreater(len(history), 60 * sleep * 0.9 * 2 / divisor)
         self.assertLess(len(history), 60 * sleep * 1.1 * 2 / divisor)
 
-        # those may be in arbitrary order, the injector happens to write
-        # y first
-        self.assertEqual(history[-1][0], EV_REL)
-        self.assertEqual(history[-1][1], rel_x)
-        self.assertAlmostEqual(history[-1][2], -1)
-        self.assertEqual(history[-2][0], EV_REL)
-        self.assertEqual(history[-2][1], rel_y)
-        self.assertAlmostEqual(history[-2][2], -1)
+        # those may be in arbitrary order
+        count_x = history.count((EV_REL, REL_X, -1))
+        count_y = history.count((EV_REL, REL_Y, -1))
+        self.assertGreater(count_x, 1)
+        self.assertGreater(count_y, 1)
+        # only those two types of events were written
+        self.assertEqual(len(history), count_x + count_y)
 
     def test_injector(self):
         # the tests in test_keycode_mapper.py test this stuff in detail

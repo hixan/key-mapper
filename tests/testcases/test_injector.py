@@ -36,7 +36,7 @@ from keymapper.key import Key
 from keymapper.dev.macros import parse
 from keymapper.dev import utils
 
-from tests.test import InputEvent, pending_events, fixtures, \
+from tests.test import new_event, pending_events, fixtures, \
     EVENT_READ_TIMEOUT, uinput_write_history_pipe, \
     MAX_ABS, cleanup, read_write_history_pipe, InputDevice
 
@@ -321,10 +321,10 @@ class TestInjector(unittest.TestCase):
         x = MAX_ABS / pointer_speed / divisor
         y = MAX_ABS / pointer_speed / divisor
         pending_events['gamepad'] = [
-            InputEvent(EV_ABS, REL_X, x),
-            InputEvent(EV_ABS, REL_Y, y),
-            InputEvent(EV_ABS, REL_X, -x),
-            InputEvent(EV_ABS, REL_Y, -y),
+            new_event(EV_ABS, REL_X, x),
+            new_event(EV_ABS, REL_Y, y),
+            new_event(EV_ABS, REL_X, -x),
+            new_event(EV_ABS, REL_Y, -y),
         ]
 
         self.injector = KeycodeInjector('gamepad', custom_mapping)
@@ -385,17 +385,17 @@ class TestInjector(unittest.TestCase):
 
         pending_events['device 2'] = [
             # should execute a macro...
-            InputEvent(EV_KEY, 8, 1),
-            InputEvent(EV_KEY, 9, 1),  # ...now
-            InputEvent(EV_KEY, 8, 0),
-            InputEvent(EV_KEY, 9, 0),
+            new_event(EV_KEY, 8, 1),
+            new_event(EV_KEY, 9, 1),  # ...now
+            new_event(EV_KEY, 8, 0),
+            new_event(EV_KEY, 9, 0),
             # gamepad stuff. trigger a combination
-            InputEvent(EV_ABS, ABS_HAT0X, -1),
-            InputEvent(EV_ABS, ABS_HAT0X, 0),
+            new_event(EV_ABS, ABS_HAT0X, -1),
+            new_event(EV_ABS, ABS_HAT0X, 0),
             # just pass those over without modifying
-            InputEvent(EV_KEY, 10, 1),
-            InputEvent(EV_KEY, 10, 0),
-            InputEvent(3124, 3564, 6542),
+            new_event(EV_KEY, 10, 1),
+            new_event(EV_KEY, 10, 0),
+            new_event(3124, 3564, 6542),
         ]
 
         self.injector = KeycodeInjector('device 2', custom_mapping)
@@ -492,10 +492,10 @@ class TestInjector(unittest.TestCase):
                     uinput_write_history_pipe[0].recv()
 
             pending_events['gamepad'] = [
-                InputEvent(*w_down),
-                InputEvent(*d_down),
-                InputEvent(*w_up),
-                InputEvent(*d_up),
+                new_event(*w_down),
+                new_event(*d_down),
+                new_event(*w_up),
+                new_event(*d_up),
             ]
 
             self.injector = KeycodeInjector('gamepad', custom_mapping)

@@ -178,41 +178,15 @@ def push_event(device, event):
     pending_events[device].append(event)
 
 
-# TODO factory to set the time automatically instead, InputEvent doesn't
-#  need to be faked
-class InputEvent:
-    """Event to put into the injector for tests.
+def new_event(type, code, value, timestamp=None):
+    """Create a new input_event."""
+    if timestamp is None:
+        timestamp = time.time()
 
-    fakes evdev.InputEvent
-    """
-    def __init__(self, type, code, value, timestamp=None):
-        """
-        Paramaters
-        ----------
-        type : int
-            one of evdev.ecodes.EV_*
-        code : int
-            keyboard event code as known to linux. E.g. 2 for the '1' button
-        value : int
-            1 for down, 0 for up, 2 for hold
-        """
-        self.type = type
-        self.code = code
-        self.value = value
-
-        if timestamp is None:
-            timestamp = time.time()
-
-        self.sec = int(timestamp)
-        self.usec = timestamp % 1 * 1000000
-
-    @property
-    def t(self):
-        # tuple shorthand
-        return self.type, self.code, self.value
-
-    def __str__(self):
-        return f'InputEvent{self.t}'
+    sec = int(timestamp)
+    usec = timestamp % 1 * 1000000
+    event = evdev.InputEvent(sec, usec, type, code, value)
+    return event
 
 
 def patch_paths():
@@ -253,13 +227,13 @@ class InputDevice:
     path = None
 
     def __init__(self, path):
-        if path not in fixtures:
+        if path != 'justdoit' and path not in fixtures:
             raise FileNotFoundError()
 
         self.path = path
-        self.phys = fixtures[path]['phys']
-        self.info = fixtures[path]['info']
-        self.name = fixtures[path]['name']
+        self.phys = fixtures.get(path, {}).get('phys', 'unset')
+        self.info = fixtures.get(path, {}).get('info', 'unset')
+        self.name = fixtures.get(path, {}).get('name', 'unset')
         self.fd = self.name
 
     def log(self, key, msg):
@@ -335,8 +309,7 @@ class UInput:
     def __init__(self, events=None, name='unnamed', *args, **kwargs):
         self.fd = 0
         self.write_count = 0
-        # TODO v wut? v
-        self.device = InputDevice('/dev/input/event40')
+        self.device = InputDevice('justdoit')
         self.name = name
         pass
 
@@ -345,12 +318,18 @@ class UInput:
 
     def write(self, type, code, value):
         self.write_count += 1
-        event = InputEvent(type, code, value)
+        event = new_event(type, code, value)
         uinput_write_history.append(event)
         uinput_write_history_pipe[1].send(event)
 
     def syn(self):
         pass
+
+
+class InputEvent(evdev.InputEvent):
+    def __init__(self, sec, usec, type, code, value):
+        self.t = (type, code, value)
+        super().__init__(sec, usec, type, code, value)
 
 
 def patch_evdev():
@@ -360,12 +339,20 @@ def patch_evdev():
     evdev.list_devices = list_devices
     evdev.InputDevice = InputDevice
     evdev.UInput = UInput
+    evdev.InputEvent = InputEvent
 
 
 def patch_unsaved():
     # don't block tests
     from keymapper.gtk import unsaved
     unsaved.unsaved_changes_dialog = lambda: unsaved.CONTINUE
+
+
+def patch_events():
+    # improve logging of stuff
+    evdev.InputEvent.__str__ = lambda self: (
+        f'InputEvent{(self.type, self.code, self.value)}'
+    )
 
 
 def clear_write_history():
@@ -382,6 +369,7 @@ patch_paths()
 patch_evdev()
 patch_unsaved()
 patch_select()
+patch_events()
 
 from keymapper.logger import update_verbosity
 from keymapper.dev.injector import KeycodeInjector

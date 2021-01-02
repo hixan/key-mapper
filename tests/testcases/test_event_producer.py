@@ -30,7 +30,7 @@ from keymapper.mapping import Mapping
 from keymapper.dev.event_producer import EventProducer, MOUSE, WHEEL
 
 from tests.test import InputDevice, UInput, MAX_ABS, clear_write_history, \
-    uinput_write_history, cleanup, InputEvent
+    uinput_write_history, cleanup, new_event
 
 
 abs_state = [0, 0, 0, 0]
@@ -63,10 +63,10 @@ class TestEvAbsMapper(unittest.TestCase):
     def do(self, a, b, c, d, expectation):
         """Present fake values to the loop and observe the outcome."""
         clear_write_history()
-        self.event_producer.notify(InputEvent(EV_ABS, ABS_X, a))
-        self.event_producer.notify(InputEvent(EV_ABS, ABS_Y, b))
-        self.event_producer.notify(InputEvent(EV_ABS, ABS_RX, c))
-        self.event_producer.notify(InputEvent(EV_ABS, ABS_RY, d))
+        self.event_producer.notify(new_event(EV_ABS, ABS_X, a))
+        self.event_producer.notify(new_event(EV_ABS, ABS_Y, b))
+        self.event_producer.notify(new_event(EV_ABS, ABS_RX, c))
+        self.event_producer.notify(new_event(EV_ABS, ABS_RY, d))
         # 3 frames
         loop = asyncio.get_event_loop()
         loop.run_until_complete(asyncio.sleep(3 / 60))

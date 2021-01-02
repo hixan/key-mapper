@@ -37,7 +37,7 @@ from keymapper.paths import get_preset_path
 from keymapper.key import Key
 from keymapper.daemon import Daemon, get_dbus_interface, BUS_NAME
 
-from tests.test import cleanup, uinput_write_history_pipe, InputEvent, \
+from tests.test import cleanup, uinput_write_history_pipe, new_event, \
     pending_events, is_service_running, fixtures, tmp
 
 
@@ -142,7 +142,7 @@ class TestDaemon(unittest.TestCase):
 
         # should forward the event unchanged
         pending_events[device] = [
-            InputEvent(EV_KEY, 13, 1)
+            new_event(EV_KEY, 13, 1)
         ]
 
         self.daemon = Daemon()
@@ -173,7 +173,7 @@ class TestDaemon(unittest.TestCase):
 
         # -1234 will be normalized to -1 by the injector
         pending_events[device] = [
-            InputEvent(*ev_2, -1234)
+            new_event(*ev_2, -1234)
         ]
 
         path = get_preset_path(device, preset)
@@ -199,7 +199,7 @@ class TestDaemon(unittest.TestCase):
         custom_mapping.save(get_preset_path(device, preset))
         config.set_autoload_preset(device, preset)
         pending_events[device] = [
-            InputEvent(*ev, 1)
+            new_event(*ev, 1)
         ]
         self.daemon = Daemon()
         preset_path = get_preset_path(device, preset)
@@ -245,7 +245,7 @@ class TestDaemon(unittest.TestCase):
         config.set_autoload_preset(device, preset)
 
         pending_events[device] = [
-            InputEvent(*event)
+            new_event(*event)
         ]
 
         xmodmap_path = os.path.join(tmp, 'foobar.json')

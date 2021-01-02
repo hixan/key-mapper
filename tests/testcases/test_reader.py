@@ -69,6 +69,22 @@ class TestReader(unittest.TestCase):
         self.assertEqual(keycode_reader.read(), None)
         self.assertEqual(len(keycode_reader._unreleased), 1)
 
+    def test_change_wheel_direction(self):
+        keycode_reader.start_reading('device 1')
+
+        keycode_reader._pipe[1].send(new_event(1234, 2345, 1))
+        self.assertEqual(keycode_reader.read(), (1234, 2345, 1))
+        self.assertEqual(len(keycode_reader._unreleased), 1)
+        self.assertEqual(keycode_reader.read(), None)
+
+        keycode_reader._pipe[1].send(new_event(1234, 2345, -1))
+        self.assertEqual(keycode_reader.read(), (1234, 2345, -1))
+        # notice that this is no combination of two sides, the previous
+        # entry in unreleased has to get overwritten. So there is still only
+        # one element in it.
+        self.assertEqual(len(keycode_reader._unreleased), 1)
+        self.assertEqual(keycode_reader.read(), None)
+
     def test_reading_2(self):
         # a combination of events
         pending_events['device 1'] = [

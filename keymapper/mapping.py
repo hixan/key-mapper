@@ -26,13 +26,10 @@ import os
 import json
 import copy
 
-import evdev
-
 from keymapper.logger import logger
 from keymapper.paths import touch
 from keymapper.config import ConfigBase, config
 from keymapper.key import Key
-from keymapper.dev import utils
 
 
 DISABLE_NAME = 'disable'

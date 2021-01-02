@@ -28,7 +28,6 @@ import asyncio
 from evdev.ecodes import EV_KEY, EV_ABS
 
 from keymapper.logger import logger
-from keymapper.dev import utils
 from keymapper.mapping import DISABLE_CODE
 
 
@@ -37,7 +36,7 @@ from keymapper.mapping import DISABLE_CODE
 # mapping of (type, code). The value is not included in the key, because
 # a key release event with a value of 0 needs to be able to find the
 # running macro. The downside is that a d-pad cannot execute two macros at
-# once, one for each direction. Only sequentially.
+# once, one for each direction. Only sequentially.W
 active_macros = {}
 
 # mapping of future up event (type, code) to (output, input event),
@@ -140,6 +139,9 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
     combination = tuple([value[1] for value in unreleased.values()])
     if key not in combination:  # might be a duplicate-down event
         combination += (key,)
+
+    mapped = False  # only down events are usually mapped
+
     # find any triggered combination. macros and key_to_code contain
     # every possible equivalent permutation of possible macros. The last
     # key in the combination needs to remain the newest key though.
@@ -151,6 +153,7 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
 
         if subset in macros or subset in key_to_code:
             key = subset
+            mapped = True
             break
     else:
         # no subset found, just use the key. all indices are tuples of tuples,
@@ -159,6 +162,7 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
             logger.key_spam(combination, 'unknown combination')
 
         key = (key,)
+        mapped = key in macros or key in key_to_code
 
     active_macro = active_macros.get(type_code)
 
@@ -199,7 +203,10 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
 
     """Filtering duplicate key downs"""
 
-    if is_key_down(event):
+    if mapped and is_key_down(event):
+        # unmapped keys should not be filtered here, they should just
+        # be forwarded to populate unreleased and then be written.
+
         if unreleased.get(type_code, (None, None))[1] == event_tuple:
             # duplicate key-down. skip this event. Avoid writing millions of
             # key-down events when a continuous value is reported, for example
@@ -219,6 +226,9 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
     """starting new macros or injecting new keys"""
 
     if is_key_down(event):
+        # also enter this for unmapped keys, as they might end up triggering
+        # a combination, so they should be remembered in unreleased
+
         if key in macros:
             macro = macros[key]
             active_macros[type_code] = macro
@@ -230,8 +240,7 @@ def handle_keycode(key_to_code, macros, event, uinput, forward=True):
 
         if key in key_to_code:
             target_code = key_to_code[key]
-            # key could have indexed a combination, which will be released
-            # when the current input is released
+            # remember the key that triggered this (combination or single key)
             unreleased[type_code] = ((EV_KEY, target_code), event_tuple)
 
             if target_code == DISABLE_CODE:

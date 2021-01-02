@@ -169,6 +169,56 @@ class TestKeycodeMapper(unittest.TestCase):
         self.assertEqual(len(unreleased), 0)
         self.assertEqual(uinput.write_count, 0)
 
+    def test_dont_filter_unmapped(self):
+        # if an event is not used at all, it should be written into
+        # unmapped but not furthermore modified
+        down = (EV_KEY, 91, 1)
+        up = (EV_KEY, 91, 0)
+        uinput = UInput()
+
+        for _ in range(10):
+            handle_keycode({}, {}, new_event(*down), uinput)
+
+        self.assertEqual(unreleased[(EV_KEY, 91)], (down[:2], down))
+        self.assertEqual(len(unreleased), 1)
+        self.assertEqual(uinput.write_count, 10)
+
+        handle_keycode({}, {}, new_event(*up), uinput)
+        self.assertEqual(len(unreleased), 0)
+        self.assertEqual(uinput.write_count, 11)
+
+    def test_filter_combi_mapped_duplicate_down(self):
+        # the opposite of the other test, but don't map the key directly
+        # but rather as the trigger for a combination
+        down_1 = (EV_KEY, 91, 1)
+        down_2 = (EV_KEY, 92, 1)
+        up_1 = (EV_KEY, 91, 0)
+        up_2 = (EV_KEY, 92, 0)
+        uinput = UInput()
+
+        output = 71
+
+        key_to_code = {
+            (down_1, down_2): 71
+        }
+
+        handle_keycode(key_to_code, {}, new_event(*down_1), uinput)
+        for _ in range(10):
+            handle_keycode(key_to_code, {}, new_event(*down_2), uinput)
+
+        # all duplicate down events should have been ignored
+        self.assertEqual(len(unreleased), 2)
+        self.assertEqual(uinput.write_count, 2)
+        self.assertEqual(uinput_write_history[0].t, down_1)
+        self.assertEqual(uinput_write_history[1].t, (EV_KEY, output, 1))
+
+        handle_keycode({}, {}, new_event(*up_1), uinput)
+        handle_keycode({}, {}, new_event(*up_2), uinput)
+        self.assertEqual(len(unreleased), 0)
+        self.assertEqual(uinput.write_count, 4)
+        self.assertEqual(uinput_write_history[2].t, up_1)
+        self.assertEqual(uinput_write_history[3].t, (EV_KEY, output, 0))
+
     def test_d_pad_combination(self):
         ev_1 = (EV_ABS, ABS_HAT0X, 1)
         ev_2 = (EV_ABS, ABS_HAT0Y, -1)

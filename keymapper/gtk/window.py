@@ -400,8 +400,8 @@ class Window:
         if context_id == CTX_WARNING:
             self.get('warning_status_icon').show()
 
-        if len(message) > 48:
-            message = message[:50] + '...'
+        if len(message) > 55:
+            message = message[:52] + '...'
 
         status_bar = self.get('status_bar')
         status_bar.push(context_id, message)
@@ -462,13 +462,13 @@ class Window:
         if custom_mapping.changed:
             self.show_status(
                 CTX_WARNING,
-                f'"{preset}" is outdated. shift+del to stop.',
+                f'"{preset}" is outdated. shift + del to stop.',
                 'Click "Save" first for changes to take effect'
             )
         else:
             self.show_status(
                 CTX_APPLY,
-                f'Applied preset "{preset}". shift+del to stop'
+                f'Applied preset "{preset}". shift + del to stop'
             )
 
         path = get_preset_path(device, preset)

@@ -188,7 +188,8 @@ class Window:
         This has nothing to do with the keycode reader.
         """
         gdk_keycode = event.get_keyval()[1]
-        if gdk_keycode == Gdk.KEY_Control_L:
+
+        if gdk_keycode in [Gdk.KEY_Control_L, Gdk.KEY_Control_R]:
             self.ctrl = True
 
         if gdk_keycode == Gdk.KEY_q and self.ctrl:
@@ -200,7 +201,8 @@ class Window:
         This has nothing to do with the keycode reader.
         """
         gdk_keycode = event.get_keyval()[1]
-        if gdk_keycode == Gdk.KEY_Control_L:
+
+        if gdk_keycode in [Gdk.KEY_Control_L, Gdk.KEY_Control_R]:
             self.ctrl = False
 
     def initialize_gamepad_config(self):
@@ -460,11 +462,14 @@ class Window:
         if custom_mapping.changed:
             self.show_status(
                 CTX_WARNING,
-                f'Applied outdated preset "{preset}"',
+                f'"{preset}" is outdated. shift+del to stop.',
                 'Click "Save" first for changes to take effect'
             )
         else:
-            self.show_status(CTX_APPLY, f'Applied preset "{preset}"')
+            self.show_status(
+                CTX_APPLY,
+                f'Applied preset "{preset}". shift+del to stop'
+            )
 
         path = get_preset_path(device, preset)
         xmodmap = get_config_path(XMODMAP_FILENAME)

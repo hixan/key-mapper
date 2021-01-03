@@ -339,11 +339,14 @@
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="receives-default">True</property>
-                    <property name="tooltip-text" translatable="yes">To give your keys back their original mapping.</property>
+                    <property name="tooltip-text" translatable="yes">Shortcut: shift + del
+
+To give your keys back their original mapping.</property>
                     <property name="halign">end</property>
                     <property name="image">gtk-redo-icon</property>
                     <property name="always-show-image">True</property>
                     <signal name="clicked" handler="on_apply_system_layout_clicked" swapped="no"/>
+                    <accelerator key="Delete" signal="activate" modifiers="GDK_SHIFT_MASK"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
